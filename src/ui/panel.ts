@@ -101,8 +101,11 @@ export function createUI() {
               <div class="op-row">
                 <button class="op-button" id="op-add-overlay" title="Create a new overlay">+ Add</button>
                 <button class="op-button" id="op-import-overlay" title="Import overlay JSON">Import</button>
+                <button class="op-button" id="op-import-backup" title="Import overlays from file">Import Backup</button>
+                <button class="op-button" id="op-export-selected" title="Export enabled overlays JSON">Export Selected</button>
                 <button class="op-button" id="op-export-overlay" title="Export active overlay JSON">Export</button>
                 <button class="op-chevron" id="op-collapse-list" title="Collapse/Expand">▾</button>
+                <input type="file" id="op-import-file" accept="application/json" style="display:none">
               </div>
             </div>
           </div>
@@ -259,6 +262,23 @@ async function importOverlayFromJSON(jsonText: string) {
   alert(`Import finished. Imported: ${imported}${failed ? `, Failed: ${failed}` : ''}`);
 }
 
+function exportSelectedOverlaysToClipboard() {
+  const selected = config.overlays.filter(o => o.enabled && o.imageUrl && !o.isLocal);
+  if (selected.length === 0) { alert('No enabled overlays can be exported.'); return; }
+  const payload = selected.map(ov => ({
+    version: 1,
+    name: ov.name,
+    imageUrl: ov.imageUrl!,
+    pixelUrl: ov.pixelUrl ?? null,
+    offsetX: ov.offsetX,
+    offsetY: ov.offsetY,
+    opacity: ov.opacity,
+  }));
+  const text = JSON.stringify(payload, null, 2);
+  copyText(text).then(() => alert('Selected overlay JSON copied to clipboard!'))
+    .catch(() => { prompt('Copy the JSON below:', text); });
+}
+
 function exportActiveOverlayToClipboard() {
   const ov = getActiveOverlay();
   if (!ov) { alert('No active overlay selected.'); return; }
@@ -297,6 +317,12 @@ function addEventListeners(panel: HTMLDivElement) {
 
   $('op-add-overlay').addEventListener('click', async () => { try { await addBlankOverlay(); } catch (e) { console.error(e); } });
   $('op-import-overlay').addEventListener('click', async () => { const text = prompt('Paste overlay JSON (single or array):'); if (!text) return; await importOverlayFromJSON(text); });
+  $('op-import-backup').addEventListener('click', () => $('op-import-file').click());
+  $('op-import-file').addEventListener('change', async (e: any) => {
+    const file = e.target.files && e.target.files[0]; e.target.value=''; if (!file) return;
+    try { const text = await file.text(); await importOverlayFromJSON(text); } catch (err) { console.error(err); alert('Failed to import backup.'); }
+  });
+  $('op-export-selected').addEventListener('click', () => exportSelectedOverlaysToClipboard());
   $('op-export-overlay').addEventListener('click', () => exportActiveOverlayToClipboard());
   $('op-collapse-list').addEventListener('click', () => { config.collapseList = !config.collapseList; saveConfig(['collapseList']); updateUI(); });
   $('op-collapse-editor').addEventListener('click', () => { config.collapseEditor = !config.collapseEditor; saveConfig(['collapseEditor']); updateUI(); });
@@ -555,4 +581,8 @@ export function updateUI() {
   const canExport = !!(ov && ov.imageUrl && !ov.isLocal);
   exportBtn.disabled = !canExport;
   exportBtn.title = canExport ? 'Export active overlay JSON' : 'Export disabled for local images';
+  const exportSelBtn = $('op-export-selected') as HTMLButtonElement;
+  const canExportSel = config.overlays.some(o => o.enabled && o.imageUrl && !o.isLocal);
+  exportSelBtn.disabled = !canExportSel;
+  exportSelBtn.title = canExportSel ? 'Export enabled overlays JSON' : 'Export disabled for local images';
 }
