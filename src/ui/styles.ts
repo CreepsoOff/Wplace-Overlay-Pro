@@ -68,6 +68,11 @@ export function injectStyles() {
 
       .op-list { display: flex; flex-direction: column; gap: 6px; height: 100%; overflow: auto; border: 1px solid var(--op-border); padding: 6px; border-radius: 10px; background: var(--op-bg); }
 
+      .op-color-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow: auto; }
+      .op-color-row { display: flex; align-items: center; gap: 6px; }
+      .op-color-swatch { width: 16px; height: 16px; border: 1px solid var(--op-border); border-radius: 4px; }
+      .op-color-name { flex: 1; }
+
       .op-item { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 8px; border: 1px solid var(--op-border); background: var(--op-subtle); }
       .op-item.active { outline: 2px solid color-mix(in oklab, var(--op-accent) 35%, transparent); background: var(--op-bg); }
       .op-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

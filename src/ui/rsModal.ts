@@ -5,6 +5,7 @@ import { MAX_OVERLAY_DIM } from '../core/constants';
 import { ensureHook } from '../core/hook';
 import { clearOverlayCache } from '../core/cache';
 import { showToast } from '../core/toast';
+import { analyzeImageColors } from '../core/colorFilter';
 
 // dispatch when an overlay image is updated
 function emitOverlayChanged() {
@@ -764,6 +765,8 @@ export function buildRSModal() {
         rs!.ov.imageBase64 = dataUrl;
         rs!.ov.imageUrl = null;
         rs!.ov.isLocal = true;
+        rs!.ov.colorCounts = await analyzeImageColors(dataUrl);
+        rs!.ov.hiddenColors = [];
         await saveConfig(['overlays']);
         clearOverlayCache();
         ensureHook();
@@ -963,6 +966,8 @@ async function resizeOverlayImage(ov: any, targetW: number, targetH: number) {
   ov.imageBase64 = dataUrl;
   ov.imageUrl = null;
   ov.isLocal = true;
+  ov.colorCounts = await analyzeImageColors(dataUrl);
+  ov.hiddenColors = [];
   await saveConfig(['overlays']);
   clearOverlayCache();
   ensureHook();

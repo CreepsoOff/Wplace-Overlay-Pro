@@ -9,6 +9,7 @@ import { extractPixelCoords } from '../core/overlay';
 import { buildCCModal, openCCModal } from './ccModal';
 import { buildRSModal, openRSModal } from './rsModal';
 import { EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from '../core/events';
+import { analyzeImageColors, keyToHex, keyToName } from '../core/colorFilter';
 
 let panelEl: HTMLDivElement | null = null;
 
@@ -152,6 +153,20 @@ export function createUI() {
             <div class="op-row"><span class="op-muted" id="op-coord-display"></span></div>
           </div>
         </div>
+
+        <div class="op-section" id="op-color-filter-section" style="display:none;">
+          <div class="op-section-title">
+            <div class="op-title-left">
+              <span class="op-title-text">Color Filter</span>
+            </div>
+            <div class="op-title-right">
+              <button class="op-chevron" id="op-collapse-color-filter" title="Collapse/Expand">▾</button>
+            </div>
+          </div>
+          <div id="op-color-filter-body">
+            <div class="op-color-list" id="op-color-filter-list"></div>
+          </div>
+        </div>
       </div>
   `;
   document.body.appendChild(panel);
@@ -207,7 +222,7 @@ function rebuildOverlayListUI() {
 
 async function addBlankOverlay() {
   const name = uniqueName('Overlay', config.overlays.map(o => o.name || ''));
-  const ov = { id: uid(), name, enabled: true, imageUrl: null, imageBase64: null, isLocal: false, pixelUrl: null, offsetX: 0, offsetY: 0, opacity: 0.7 };
+  const ov = { id: uid(), name, enabled: true, imageUrl: null, imageBase64: null, isLocal: false, pixelUrl: null, offsetX: 0, offsetY: 0, opacity: 0.7, colorCounts: null, hiddenColors: [] };
   config.overlays.push(ov);
   config.activeOverlayId = ov.id;
   await saveConfig(['overlays', 'activeOverlayId']);
@@ -218,6 +233,8 @@ async function addBlankOverlay() {
 async function setOverlayImageFromURL(ov: any, url: string) {
   const base64 = await urlToDataURL(url);
   ov.imageUrl = url; ov.imageBase64 = base64; ov.isLocal = false;
+  ov.colorCounts = await analyzeImageColors(base64);
+  ov.hiddenColors = [];
   await saveConfig(['overlays']); clearOverlayCache();
   config.autoCapturePixelUrl = true; await saveConfig(['autoCapturePixelUrl']);
   ensureHook(); updateUI();
@@ -228,6 +245,8 @@ async function setOverlayImageFromFile(ov: any, file: File) {
   if (!confirm('Local PNGs cannot be exported to friends! Are you sure?')) return;
   const base64 = await fileToDataURL(file);
   ov.imageBase64 = base64; ov.imageUrl = null; ov.isLocal = true;
+  ov.colorCounts = await analyzeImageColors(base64);
+  ov.hiddenColors = [];
   await saveConfig(['overlays']); clearOverlayCache();
   config.autoCapturePixelUrl = true; await saveConfig(['autoCapturePixelUrl']);
   ensureHook(); updateUI();
@@ -248,7 +267,8 @@ async function importOverlayFromJSON(jsonText: string) {
     if (!imageUrl) { failed++; continue; }
     try {
       const base64 = await urlToDataURL(imageUrl);
-      const ov = { id: uid(), name, enabled: true, imageUrl, imageBase64: base64, isLocal: false, pixelUrl, offsetX, offsetY, opacity };
+      const colorCounts = await analyzeImageColors(base64);
+      const ov = { id: uid(), name, enabled: true, imageUrl, imageBase64: base64, isLocal: false, pixelUrl, offsetX, offsetY, opacity, colorCounts, hiddenColors: [] };
       config.overlays.push(ov); imported++;
     } catch (e) { console.error('Import failed for', imageUrl, e); failed++; }
   }
@@ -300,6 +320,7 @@ function addEventListeners(panel: HTMLDivElement) {
   $('op-export-overlay').addEventListener('click', () => exportActiveOverlayToClipboard());
   $('op-collapse-list').addEventListener('click', () => { config.collapseList = !config.collapseList; saveConfig(['collapseList']); updateUI(); });
   $('op-collapse-editor').addEventListener('click', () => { config.collapseEditor = !config.collapseEditor; saveConfig(['collapseEditor']); updateUI(); });
+  $('op-collapse-color-filter').addEventListener('click', () => { config.collapseColorFilter = !config.collapseColorFilter; saveConfig(['collapseColorFilter']); updateUI(); });
   $('op-collapse-positioning').addEventListener('click', () => { config.collapsePositioning = !config.collapsePositioning; saveConfig(['collapsePositioning']); updateUI(); });
 
   $('op-name').addEventListener('change', async (e: any) => {
@@ -469,6 +490,63 @@ function updateEditorUI() {
   if (chevron) chevron.textContent = config.collapseEditor ? '▸' : '▾';
 }
 
+function updateColorFilterUI() {
+  const section = $('op-color-filter-section') as HTMLDivElement;
+  const body = $('op-color-filter-body') as HTMLDivElement;
+  const list = $('op-color-filter-list') as HTMLDivElement;
+  const chevron = $('op-collapse-color-filter');
+  const ov = getActiveOverlay();
+
+  if (!ov || !ov.imageBase64 || !ov.colorCounts) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'flex';
+  if (body) body.style.display = config.collapseColorFilter ? 'none' : 'block';
+  if (chevron) chevron.textContent = config.collapseColorFilter ? '▸' : '▾';
+
+  list.innerHTML = '';
+  const hidden = new Set(ov.hiddenColors || []);
+  const entries = Object.entries(ov.colorCounts).sort((a, b) => b[1] - a[1]);
+  for (const [key, count] of entries) {
+    const row = document.createElement('div');
+    row.className = 'op-color-row';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !hidden.has(key);
+    cb.addEventListener('change', async () => {
+      if (!ov.hiddenColors) ov.hiddenColors = [];
+      if (cb.checked) {
+        ov.hiddenColors = ov.hiddenColors.filter(c => c !== key);
+      } else {
+        if (!ov.hiddenColors.includes(key)) ov.hiddenColors.push(key);
+      }
+      await saveConfig(['overlays']);
+      clearOverlayCache();
+      ensureHook();
+    });
+
+    const swatch = document.createElement('div');
+    swatch.className = 'op-color-swatch';
+    swatch.style.background = keyToHex(key);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'op-color-name';
+    nameSpan.textContent = keyToName(key);
+
+    const countSpan = document.createElement('span');
+    countSpan.textContent = String(count);
+
+    row.appendChild(cb);
+    row.appendChild(swatch);
+    row.appendChild(nameSpan);
+    row.appendChild(countSpan);
+    list.appendChild(row);
+  }
+}
+
 export function updateUI() {
   if (!panelEl) return;
 
@@ -549,6 +627,7 @@ export function updateUI() {
 
   rebuildOverlayListUI();
   updateEditorUI();
+  updateColorFilterUI();
 
   const exportBtn = $('op-export-overlay') as HTMLButtonElement;
   const ov = getActiveOverlay();

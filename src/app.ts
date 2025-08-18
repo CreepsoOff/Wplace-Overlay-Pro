@@ -6,6 +6,7 @@ import { createUI, updateUI } from './ui/panel';
 import { displayImageFromData } from './core/overlay';
 import { showToast } from './core/toast';
 import { urlToDataURL } from './core/gm';
+import { analyzeImageColors } from './core/colorFilter';
 
 async function applyTemplateFromUrl() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -35,6 +36,7 @@ async function applyTemplateFromUrl() {
     console.log(`Fetching image from: ${imageUrl}`);
     const imageBase64 = await urlToDataURL(imageUrl);
 
+    const colorCounts = await analyzeImageColors(imageBase64);
     const newOverlay = {
       id: crypto.randomUUID(),
       name,
@@ -46,6 +48,8 @@ async function applyTemplateFromUrl() {
       offsetX,
       offsetY,
       opacity,
+      colorCounts,
+      hiddenColors: []
     };
 
     console.log('Adding new overlay from URL template:', newOverlay);

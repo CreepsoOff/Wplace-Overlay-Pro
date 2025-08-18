@@ -145,17 +145,19 @@ export function overlaySignature(ov: {
   offsetX: number,
   offsetY: number,
   opacity: number,
+  hiddenColors?: string[],
 }, isPalettePerfect?: boolean) {
   const imgKey = ov.imageBase64 ? ov.imageBase64.slice(0, 64) + ':' + ov.imageBase64.length : 'none';
   const perfectFlag = isPalettePerfect !== undefined ? (isPalettePerfect ? 'P' : 'I') : 'U';
-  return [imgKey, ov.pixelUrl || 'null', ov.offsetX, ov.offsetY, ov.opacity, perfectFlag].join('|');
+  const hidden = ov.hiddenColors && ov.hiddenColors.length ? ov.hiddenColors.join(',') : '';
+  return [imgKey, ov.pixelUrl || 'null', ov.offsetX, ov.offsetY, ov.opacity, perfectFlag, hidden].join('|');
 }
 
 export async function buildOverlayDataForChunkUnified(
   ov: {
     id: string, name: string, enabled: boolean,
     imageBase64: string | null, pixelUrl: string | null,
-    offsetX: number, offsetY: number, opacity: number
+    offsetX: number, offsetY: number, opacity: number, hiddenColors?: string[]
   },
   targetChunk1: number,
   targetChunk2: number,
@@ -179,6 +181,8 @@ export async function buildOverlayDataForChunkUnified(
 
   const drawX = (base.chunk1 * TILE_SIZE + base.posX + ov.offsetX) - (targetChunk1 * TILE_SIZE);
   const drawY = (base.chunk2 * TILE_SIZE + base.posY + ov.offsetY) - (targetChunk2 * TILE_SIZE);
+
+  const hiddenSet = new Set(ov.hiddenColors || []);
 
   // Check if image is palette-perfect for optimization
   const isPalettePerfect = isPalettePerfectImage(img);
@@ -205,6 +209,10 @@ export async function buildOverlayDataForChunkUnified(
       const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
       // Special case for #deface color
       if (r === 0xde && g === 0xfa && b === 0xce) {
+        continue;
+      }
+      if (hiddenSet.has(`${r},${g},${b}`)) {
+        data[i+3] = 0;
         continue;
       }
       if (a > 0) {
@@ -268,6 +276,7 @@ export async function buildOverlayDataForChunkUnified(
 
           // Early exit for transparent or deface pixels
           if (a <= 128 || (r === 0xde && g === 0xfa && b === 0xce)) continue;
+          if (hiddenSet.has(`${r},${g},${b}`)) continue;
 
           let colorIndex: number;
 
@@ -344,6 +353,9 @@ export async function buildOverlayDataForChunkUnified(
         for (let i = 0; i < data.length; i += 4) {
           const a = data[i + 3];
           if (a === 0) continue;
+
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          if (hiddenSet.has(`${r},${g},${b}`)) { data[i+3] = 0; continue; }
 
           const px = (i / 4) % width;
           const py = Math.floor((i / 4) / width);
