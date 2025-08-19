@@ -6,6 +6,7 @@ import { clearOverlayCache } from '../core/cache';
 import { showToast } from '../core/toast';
 import { uid } from '../core/util';
 import { updateOverlays } from '../core/overlay';
+import { updateOverlayColorStats } from '../core/colorFilter';
 
 // dispatch when an overlay image is updated
 function emitOverlayChanged() {
@@ -966,6 +967,7 @@ async function resizeOverlayImage(ov: OverlayItem, targetW: number, targetH: num
   ov.imageUrl = null;
   ov.isLocal = true;
   ov.imageId = uid();
+  await updateOverlayColorStats(ov);
   await saveConfig(['overlays']);
   clearOverlayCache();
   await updateOverlays();
