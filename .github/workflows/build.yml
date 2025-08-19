@@ -40,8 +40,8 @@ jobs:
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: configs-epic-overlay-pro-fork.user.js
-        path: dist/configs-epic-overlay-pro-fork.user.js
+        name: overlay-pro-tt.user.js
+        path: dist/overlay-pro-tt.user.js
 
     - name: Update Development Release
       uses: andelf/nightly-release@main
@@ -52,4 +52,4 @@ jobs:
         name: 'Development Release'
         body: Development release for commit ${{ github.sha }}.
         files: |
-          dist/configs-epic-overlay-pro-fork.user.js
+          dist/overlay-pro-tt.user.js
