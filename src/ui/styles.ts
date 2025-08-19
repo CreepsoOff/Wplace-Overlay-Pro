@@ -30,7 +30,7 @@ export function injectStyles() {
       #overlay-pro-panel {
         position: fixed; z-index: 9999; background: var(--op-bg); border: 1px solid var(--op-border);
         border-radius: 16px; color: var(--op-text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-        font-size: 14px; width: 340px; box-shadow: 0 10px 24px rgba(16,24,40,0.12), 0 2px 6px rgba(16,24,40,0.08); user-select: none;
+        font-size: 14px; width: 340px; box-shadow: 0 10px 24px rgba(16,24,40,0.12), 0 2px 6px rgba(16,24,40,0.08); user-select: none; max-height: 100vh; overflow-y: auto;
       }
 
 	    #op-list-wrap { display: flex; flex: 1; height: 80%; }
@@ -96,6 +96,12 @@ export function injectStyles() {
 
       .op-icon-btn { background: var(--op-btn); color: var(--op-text); border: 1px solid var(--op-btn-border); border-radius: 10px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
       .op-icon-btn:hover { background: var(--op-btn-hover); }
+
+      .op-color-filter { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow: auto; border: 1px solid var(--op-border); border-radius: 8px; padding: 4px; background: var(--op-bg); }
+      .op-color-row { display: flex; align-items: center; gap: 6px; }
+      .op-color-swatch { width: 16px; height: 16px; border: 1px solid var(--op-border); border-radius: 4px; }
+      .op-color-name { flex: 1; }
+      .op-color-count { font-size: 12px; color: var(--op-muted); }
 
       .op-danger { background: #fee2e2; border-color: #fecaca; color: #7f1d1d; }
       .op-danger-text { color: #dc2626; font-weight: 600; }
