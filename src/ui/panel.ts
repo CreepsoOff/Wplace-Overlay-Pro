@@ -1,16 +1,13 @@
 /// <reference types="tampermonkey" />
-import { config, saveConfig, getActiveOverlay, applyTheme } from '../core/store';
-import { ensureHook } from '../core/hook';
+import { config, me, saveConfig, getActiveOverlay, applyTheme, type OverlayItem } from '../core/store';
 import { clearOverlayCache } from '../core/cache';
 import { showToast } from '../core/toast';
-import { urlToDataURL, fileToDataURL } from '../core/gm';
+import { urlToDataURL, fileToDataURL, gmFetchJson } from '../core/gm';
 import { uniqueName, uid } from '../core/util';
-import { extractPixelCoords } from '../core/overlay';
+import { extractPixelCoords, updateOverlays } from '../core/overlay';
 import { buildCCModal, openCCModal } from './ccModal';
 import { buildRSModal, openRSModal } from './rsModal';
 import { EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from '../core/events';
-import { updateOverlayColorStats, rgbKeyToHex } from '../core/colorFilter';
-import { WPLACE_NAMES } from '../core/palette';
 
 let panelEl: HTMLDivElement | null = null;
 
@@ -30,7 +27,10 @@ export function createUI() {
 
   panel.innerHTML = `
       <div class="op-header" id="op-header">
-        <h3>Overlay Pro</h3>
+        <div class="op-row in-header">
+          <h3>Overlay Pro</h3>
+          <div class="op-small-text" id="op-small-stats"></div>
+        </div>
         <div class="op-header-actions">
           <button class="op-hdr-btn" id="op-theme-toggle" title="Toggle theme">☀️/🌙</button>
           <button class="op-hdr-btn" id="op-refresh-btn" title="Refresh">⟲</button>
@@ -41,24 +41,42 @@ export function createUI() {
         <div class="op-section">
           <div class="op-section-title">
             <div class="op-title-left">
+              <span class="op-title-text">Statistics</span>
+            </div>
+            <div class="op-title-right">
+                <button class="op-chevron" id="op-collapse-stats" title="Collapse/Expand">▾</button>
+            </div>
+          </div>
+          <div id="op-stats-body">
+            <div class="op-row">
+              <div>Droplets:</div>
+              <div id="op-droplets-value">idk :&lt;</div>
+            </div>
+            <div class="op-row">
+              <div>Level:</div>
+              <div id="op-level-value">idk :&lt;</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="op-section" id="op-mode-section">
+          <div class="op-section-title">
+            <div class="op-title-left">
               <span class="op-title-text">Mode</span>
             </div>
-          </div>
-          <div class="op-row op-tabs">
-            <button class="op-tab-btn" data-mode="above">Full Overlay</button>
-            <button class="op-tab-btn" data-mode="minify">Mini-pixel</button>
-            <button class="op-tab-btn" data-mode="original">Disabled</button>
-          </div>
-          <div id="op-mode-settings">
-            <div class="op-mode-setting" data-setting="above">
-                <div class="op-row"><label>Layering</label><div id="op-layering-btns"></div></div>
-                <div class="op-row"><label style="width: 60px;">Opacity</label><input type="range" min="0" max="1" step="0.05" class="op-slider op-grow" id="op-opacity-slider"><span id="op-opacity-value" style="width: 36px; text-align: right;">70%</span></div>
+            <div class="op-title-right">
+              <button class="op-chevron" id="op-collapse-mode" title="Collapse/Expand">▾</button>
             </div>
-            <div class="op-mode-setting" data-setting="minify">
-              <div class="op-row"><label>Style</label>
-                <div class="op-row"><input type="radio" name="minify-style" value="dots" id="op-style-dots"><label for="op-style-dots">Dots</label></div>
-                <div class="op-row"><input type="radio" name="minify-style" value="symbols" id="op-style-symbols"><label for="op-style-symbols">Symbols</label></div>
-              </div>
+          </div>
+          <div id="op-mode-body">
+            <div class="op-row op-tabs">
+              <button class="op-tab-btn" data-mode="full">Full</button>
+              <button class="op-tab-btn" data-mode="dots">Dots</button>
+              <button class="op-tab-btn" data-mode="none">Disabled</button>
+            </div>
+            <div class="op-mode-setting" id="op-mode-settings">
+              <div class="op-row" id="op-layering-btns"><label>Layering</label></div>
+              <div class="op-row"><label style="width: 60px;">Opacity</label><input type="range" min="0" max="1" step="0.05" class="op-slider op-grow" id="op-opacity-slider"><span id="op-opacity-value" style="width: 36px; text-align: right;">70%</span></div>
             </div>
           </div>
         </div>
@@ -94,22 +112,22 @@ export function createUI() {
             </div>
         </div>
 
-        <div class="op-section resizable">
+        <div class="op-section">
           <div class="op-section-title">
             <div class="op-title-left">
               <span class="op-title-text">Overlays</span>
             </div>
             <div class="op-title-right">
-              <div class="op-row">
-                <button class="op-button" id="op-add-overlay" title="Create a new overlay">+ Add</button>
-                <button class="op-button" id="op-import-overlay" title="Import overlay JSON">Import</button>
-                <button class="op-button" id="op-export-overlay" title="Export active overlay JSON">Export</button>
+              <div class="op-row in-header">
+                <button class="op-button in-header" id="op-add-overlay" title="Create a new overlay">+ Add</button>
+                <button class="op-button in-header" id="op-import-overlay" title="Import overlay JSON">Import</button>
+                <button class="op-button in-header" id="op-export-overlay" title="Export active overlay JSON">Export</button>
                 <button class="op-chevron" id="op-collapse-list" title="Collapse/Expand">▾</button>
               </div>
             </div>
           </div>
           <div id="op-list-wrap">
-            <div class="op-list" id="op-overlay-list"></div>
+            <div class="op-list resizable" id="op-overlay-list" style="height: 170px;"></div>
           </div>
         </div>
 
@@ -152,8 +170,6 @@ export function createUI() {
             </div>
 
             <div class="op-row"><span class="op-muted" id="op-coord-display"></span></div>
-            <div class="op-row"><label style="width: 90px;">Color Filter</label></div>
-            <div id="op-color-filter" class="op-color-filter" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -192,7 +208,8 @@ function rebuildOverlayListUI() {
     const [radio, checkbox, nameDiv, trashBtn] = item.children as any as [HTMLInputElement, HTMLInputElement, HTMLDivElement, HTMLButtonElement];
     radio.addEventListener('change', async () => { config.activeOverlayId = ov.id; await saveConfig(['activeOverlayId']); updateUI(); });
     checkbox.addEventListener('change', async () => {
-      ov.enabled = checkbox.checked; await saveConfig(['overlays']); clearOverlayCache(); ensureHook(); updateUI();
+      ov.enabled = checkbox.checked; await saveConfig(['overlays']); clearOverlayCache(); updateUI();
+      await updateOverlays();
     });
     nameDiv.addEventListener('click', async () => { config.activeOverlayId = ov.id; await saveConfig(['activeOverlayId']); updateUI(); });
     trashBtn.addEventListener('click', async (e) => {
@@ -202,7 +219,8 @@ function rebuildOverlayListUI() {
       if (idx >= 0) {
         config.overlays.splice(idx, 1);
         if (config.activeOverlayId === ov.id) config.activeOverlayId = config.overlays[0]?.id || null;
-        await saveConfig(['overlays', 'activeOverlayId']); clearOverlayCache(); ensureHook(); updateUI();
+        await saveConfig(['overlays', 'activeOverlayId']); clearOverlayCache(); updateUI();
+        await updateOverlays();
       }
     });
     list.appendChild(item);
@@ -211,57 +229,100 @@ function rebuildOverlayListUI() {
 
 async function addBlankOverlay() {
   const name = uniqueName('Overlay', config.overlays.map(o => o.name || ''));
-  const ov = { id: uid(), name, enabled: true, imageUrl: null, imageBase64: null, isLocal: false, pixelUrl: null, offsetX: 0, offsetY: 0, opacity: 0.7 };
+  const ov = { id: uid(), name, enabled: true, imageUrl: null, imageBase64: null, imageId: uid(), isLocal: false, pixelUrl: null, offsetX: 0, offsetY: 0, opacity: 0.7 };
   config.overlays.push(ov);
   config.activeOverlayId = ov.id;
   await saveConfig(['overlays', 'activeOverlayId']);
-  clearOverlayCache(); ensureHook(); updateUI();
+  clearOverlayCache(); updateUI();
+  await updateOverlays();
   return ov;
 }
 
-async function setOverlayImageFromURL(ov: any, url: string) {
+async function setOverlayImageFromURL(ov: OverlayItem, url: string) {
   const base64 = await urlToDataURL(url);
   ov.imageUrl = url; ov.imageBase64 = base64; ov.isLocal = false;
-  await updateOverlayColorStats(ov);
+  ov.imageId = uid();
   await saveConfig(['overlays']); clearOverlayCache();
   config.autoCapturePixelUrl = true; await saveConfig(['autoCapturePixelUrl']);
-  ensureHook(); updateUI();
+  updateUI();
+  await updateOverlays();
   showToast(`Image loaded. Placement mode ON -- click once to set anchor.`);
 }
-async function setOverlayImageFromFile(ov: any, file: File) {
+async function setOverlayImageFromFile(ov: OverlayItem, file: File) {
   if (!file || !file.type || !file.type.startsWith('image/')) { alert('Please choose an image file.'); return; }
   if (!confirm('Local PNGs cannot be exported to friends! Are you sure?')) return;
   const base64 = await fileToDataURL(file);
   ov.imageBase64 = base64; ov.imageUrl = null; ov.isLocal = true;
-  await updateOverlayColorStats(ov);
+  ov.imageId = uid();
   await saveConfig(['overlays']); clearOverlayCache();
   config.autoCapturePixelUrl = true; await saveConfig(['autoCapturePixelUrl']);
-  ensureHook(); updateUI();
+  updateUI();
+  await updateOverlays();
   showToast(`Local image loaded. Placement mode ON -- click once to set anchor.`);
 }
 
 async function importOverlayFromJSON(jsonText: string) {
-  let obj; try { obj = JSON.parse(jsonText); } catch { alert('Invalid JSON'); return; }
+  let obj;
+  try {
+    obj = JSON.parse(jsonText);
+  }
+  catch {
+    try {
+      obj = await gmFetchJson(jsonText);
+    }
+    catch {
+      alert('Invalid JSON or link');
+      return;
+    }
+  }
   const arr = Array.isArray(obj) ? obj : [obj];
   let imported = 0, failed = 0;
+  let shouldOverride = null;
   for (const item of arr) {
-    const name = uniqueName(item.name || 'Imported Overlay', config.overlays.map(o => o.name || ''));
-    const imageUrl = item.imageUrl;
-    const pixelUrl = item.pixelUrl ?? null;
-    const offsetX = Number.isFinite(item.offsetX) ? item.offsetX : 0;
-    const offsetY = Number.isFinite(item.offsetY) ? item.offsetY : 0;
-    const opacity = Number.isFinite(item.opacity) ? item.opacity : 0.7;
-    if (!imageUrl) { failed++; continue; }
-    try {
-      const base64 = await urlToDataURL(imageUrl);
-      const ov = { id: uid(), name, enabled: true, imageUrl, imageBase64: base64, isLocal: false, pixelUrl, offsetX, offsetY, opacity };
-      await updateOverlayColorStats(ov);
-      config.overlays.push(ov); imported++;
-    } catch (e) { console.error('Import failed for', imageUrl, e); failed++; }
+    const override = shouldOverride === false ? undefined : config.overlays.find(x => x.name.toLowerCase() === item.name.toLowerCase());
+    if (shouldOverride === null && override) {
+      shouldOverride = confirm('Some imported overlays have names that are already in use.\n\nOK to override overlays with overlapping names.\nCancel to rename imported overlays.');
+    }
+    if (override && shouldOverride) {
+      if (item.imageUrl !== undefined) {
+        try {
+          const base64 = await urlToDataURL(item.imageUrl);
+          override.imageUrl = item.imageUrl;
+          override.imageBase64 = base64;
+          override.isLocal = false;
+          override.imageId = uid();
+        }
+        catch (e) {
+          console.error('Import failed for', item.imageUrl, e);
+          failed++;
+          continue;
+        }
+      }
+      override.pixelUrl = item.pixelUrl !== undefined ? item.pixelUrl : override.pixelUrl;
+      override.offsetX = item.offsetX !== undefined ? item.offsetX : override.offsetX;
+      override.offsetY = item.offsetY !== undefined ? item.offsetY : override.offsetY;
+      override.opacity = item.opacity !== undefined ? item.opacity : override.opacity;
+      imported++;
+    }
+    else {
+      const name = uniqueName(item.name || 'Imported Overlay', config.overlays.map(o => o.name || ''));
+      const imageUrl = item.imageUrl;
+      const pixelUrl = item.pixelUrl ?? null;
+      const offsetX = Number.isFinite(item.offsetX) ? item.offsetX : 0;
+      const offsetY = Number.isFinite(item.offsetY) ? item.offsetY : 0;
+      const opacity = Number.isFinite(item.opacity) ? item.opacity : 0.7;
+      if (!imageUrl) { failed++; continue; }
+      try {
+        const base64 = await urlToDataURL(imageUrl);
+        const ov = { id: uid(), name, enabled: true, imageUrl, imageBase64: base64, imageId: uid(), isLocal: false, pixelUrl, offsetX, offsetY, opacity };
+        config.overlays.push(ov); imported++;
+      } catch (e) { console.error('Import failed for', imageUrl, e); failed++; }
+    }
   }
   if (imported > 0) {
     config.activeOverlayId = config.overlays[config.overlays.length - 1].id;
-    await saveConfig(['overlays', 'activeOverlayId']); clearOverlayCache(); ensureHook(); updateUI();
+    await saveConfig(['overlays', 'activeOverlayId']); clearOverlayCache(); updateUI();
+    await updateOverlays();
   }
   alert(`Import finished. Imported: ${imported}${failed ? `, Failed: ${failed}` : ''}`);
 }
@@ -270,7 +331,15 @@ function exportActiveOverlayToClipboard() {
   const ov = getActiveOverlay();
   if (!ov) { alert('No active overlay selected.'); return; }
   if (ov.isLocal || !ov.imageUrl) { alert('This overlay uses a local image and cannot be exported. Please host the image and set an image URL.'); return; }
-  const payload = { version: 1, name: ov.name, imageUrl: ov.imageUrl, pixelUrl: ov.pixelUrl ?? null, offsetX: ov.offsetX, offsetY: ov.offsetY, opacity: ov.opacity };
+  const payload = {
+    version: 1,
+    name: ov.name,
+    imageUrl: ov.imageUrl,
+    pixelUrl: ov.pixelUrl ?? null,
+    offsetX: ov.offsetX == 0 ? undefined : ov.offsetX,
+    offsetY: ov.offsetY == 0 ? undefined : ov.offsetY,
+    opacity: ov.opacity == 0.7 ? undefined : ov.opacity
+  };
   const text = JSON.stringify(payload, null, 2);
   copyText(text).then(() => alert('Overlay JSON copied to clipboard!')).catch(() => { prompt('Copy the JSON below:', text); });
 }
@@ -280,31 +349,27 @@ function copyText(text: string) {
 }
 
 function addEventListeners(panel: HTMLDivElement) {
-  $('op-theme-toggle').addEventListener('click', async (e) => { e.stopPropagation(); config.theme = config.theme === 'light' ? 'dark' : 'light'; await saveConfig(['theme']); applyTheme(); });
+  $('op-theme-toggle').addEventListener('click', async (e) => { e.stopPropagation(); config.theme = config.theme === 'light' ? 'dark' : 'light'; await saveConfig(['theme']); applyTheme(); updateThemeToggle(); });
   $('op-refresh-btn').addEventListener('click', (e) => { e.stopPropagation(); location.reload(); });
   $('op-panel-toggle').addEventListener('click', (e) => { e.stopPropagation(); config.isPanelCollapsed = !config.isPanelCollapsed; saveConfig(['isPanelCollapsed']); updateUI(); });
 
   panel.querySelectorAll('.op-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const mode = btn.getAttribute('data-mode') as 'above' | 'minify' | 'original';
-        if (mode === 'above') {
-            config.overlayMode = 'behind';
-        } else {
-            config.overlayMode = mode;
-        }
-        saveConfig(['overlayMode']);
-        ensureHook();
+    btn.addEventListener('click', async () => {
+        const mode = btn.getAttribute('data-mode') as 'full' | 'dots' | 'none';
+        config.overlayStyle = mode;
+        saveConfig(['overlayStyle']);
         updateUI();
+        await updateOverlays();
     });
   });
-  $('op-style-dots').addEventListener('change', () => { if (($('op-style-dots') as HTMLInputElement).checked) { config.minifyStyle = 'dots'; saveConfig(['minifyStyle']); clearOverlayCache(); ensureHook(); }});
-  $('op-style-symbols').addEventListener('change', () => { if (($('op-style-symbols') as HTMLInputElement).checked) { config.minifyStyle = 'symbols'; saveConfig(['minifyStyle']); clearOverlayCache(); ensureHook(); }});
 
-  $('op-autocap-toggle').addEventListener('click', () => { config.autoCapturePixelUrl = !config.autoCapturePixelUrl; saveConfig(['autoCapturePixelUrl']); ensureHook(); updateUI(); });
+  $('op-autocap-toggle').addEventListener('click', () => { config.autoCapturePixelUrl = !config.autoCapturePixelUrl; saveConfig(['autoCapturePixelUrl']); updateUI(); });
 
   $('op-add-overlay').addEventListener('click', async () => { try { await addBlankOverlay(); } catch (e) { console.error(e); } });
-  $('op-import-overlay').addEventListener('click', async () => { const text = prompt('Paste overlay JSON (single or array):'); if (!text) return; await importOverlayFromJSON(text); });
+  $('op-import-overlay').addEventListener('click', async () => { const text = prompt('Paste overlay JSON (single or array) or link:'); if (!text) return; await importOverlayFromJSON(text); });
   $('op-export-overlay').addEventListener('click', () => exportActiveOverlayToClipboard());
+  $('op-collapse-stats').addEventListener('click', () => { config.collapseStats = !config.collapseStats; saveConfig(['collapseStats']); updateUI(); });
+  $('op-collapse-mode').addEventListener('click', () => { config.collapseMode = !config.collapseMode; saveConfig(['collapseMode']); updateUI(); });
   $('op-collapse-list').addEventListener('click', () => { config.collapseList = !config.collapseList; saveConfig(['collapseList']); updateUI(); });
   $('op-collapse-editor').addEventListener('click', () => { config.collapseEditor = !config.collapseEditor; saveConfig(['collapseEditor']); updateUI(); });
   $('op-collapse-positioning').addEventListener('click', () => { config.collapsePositioning = !config.collapsePositioning; saveConfig(['collapsePositioning']); updateUI(); });
@@ -317,6 +382,7 @@ function addEventListeners(panel: HTMLDivElement) {
       showToast(`Name in use. Renamed to "${ov.name}".`);
     } else { ov.name = desired; }
     await saveConfig(['overlays']); rebuildOverlayListUI();
+    await updateOverlays();
   });
 
   $('op-fetch').addEventListener('click', async () => {
@@ -347,6 +413,7 @@ function addEventListeners(panel: HTMLDivElement) {
     const ov = getActiveOverlay(); if (!ov) return;
     ov.offsetX += dx; ov.offsetY += dy;
     await saveConfig(['overlays']); clearOverlayCache(); updateUI();
+    await updateOverlays();
   };
   $('op-nudge-up').addEventListener('click', () => nudge(0, -1));
   $('op-nudge-down').addEventListener('click', () => nudge(0, 1));
@@ -358,7 +425,7 @@ function addEventListeners(panel: HTMLDivElement) {
     ov.opacity = parseFloat(e.target.value);
     $('op-opacity-value').textContent = Math.round(ov.opacity * 100) + '%';
   });
-  $('op-opacity-slider').addEventListener('change', async () => { await saveConfig(['overlays']); clearOverlayCache(); });
+  $('op-opacity-slider').addEventListener('change', async () => { await saveConfig(['overlays']); clearOverlayCache(); await updateOverlays(); });
 
   $('op-download-overlay').addEventListener('click', () => {
     const ov = getActiveOverlay();
@@ -474,70 +541,95 @@ function updateEditorUI() {
   editorBody.style.display = config.collapseEditor ? 'none' : 'block';
   const chevron = $('op-collapse-editor');
   if (chevron) chevron.textContent = config.collapseEditor ? '▸' : '▾';
+}
 
-  rebuildColorFilterUI();
+export function updateThemeToggle() {
+  const themeToggle = document.getElementById('op-theme-toggle');
+  themeToggle.textContent = config.theme === 'dark' ? '☀️' : '🌙';
+}
+
+function levelPixels(level) {
+  return Math.ceil(Math.pow(level * Math.pow(30, 0.65), 1 / 0.65));
 }
 
 export function updateUI() {
   if (!panelEl) return;
 
+  const ov = getActiveOverlay();
+
   applyTheme();
+  updateThemeToggle();
 
   const content = $('op-content');
   const toggle = $('op-panel-toggle');
+  const header = $('op-header');
   const collapsed = !!config.isPanelCollapsed;
   content.style.display = collapsed ? 'none' : 'flex';
   toggle.textContent = collapsed ? '▸' : '▾';
   toggle.title = collapsed ? 'Expand' : 'Collapse';
+  header.style = collapsed ? 'border-bottom: none;' : undefined;
+
+  // stats
+  const statsBody = $('op-stats-body');
+  const statsCz = $('op-collapse-stats');
+  const dropletsValue = $('op-droplets-value');
+  const levelValue = $('op-level-value');
+  const smallStats = $('op-small-stats');
+  if (statsBody) statsBody.style.display = config.collapseStats ? 'none' : 'block';
+  if (statsCz) statsCz.textContent = config.collapseStats ? '▸' : '▾';
+  if (me.data) {
+    const level = Math.floor(me.data.level);
+    const percent = Math.floor((me.data.level - level) * 100.0);
+    const forCurrentLevel = levelPixels(level - 1);
+    const forNextLevel = levelPixels(level);
+    const pixels = me.data.pixelsPainted;
+    if (dropletsValue) {
+      dropletsValue.textContent = `${me.data.droplets}`;
+    }
+    if (levelValue) {
+      levelValue.textContent = `${level} (${percent}% ${pixels - forNextLevel}/${pixels - forCurrentLevel}/${forNextLevel - forCurrentLevel})`;
+    }
+    if (smallStats) {
+      smallStats.textContent = `(${me.data.droplets}💧| ${pixels - forNextLevel}/${pixels - forCurrentLevel}/${forNextLevel - forCurrentLevel})`;
+    }
+  }
+
+  if (smallStats) {
+    smallStats.style = collapsed ? '' : 'display: none;';
+  }
 
   // --- Mode Tabs ---
   panelEl.querySelectorAll('.op-tab-btn').forEach(btn => {
     const mode = btn.getAttribute('data-mode');
-    let isActive = false;
-    if (mode === 'above' && (config.overlayMode === 'above' || config.overlayMode === 'behind')) {
-        isActive = true;
-    } else {
-        isActive = mode === config.overlayMode;
-    }
+    let isActive = mode === config.overlayStyle;
     btn.classList.toggle('active', isActive);
   });
 
-  // --- Mode Settings ---
-  const fullOverlaySettings = $('op-mode-settings').querySelector('[data-setting="above"]') as HTMLDivElement;
-  const minifySettings = $('op-mode-settings').querySelector('[data-setting="minify"]') as HTMLDivElement;
+  const modeBody = $('op-mode-body');
+  const modeCz = $('op-collapse-mode');
+  if (modeBody) modeBody.style.display = config.collapseMode ? 'none' : 'block';
+  if (modeCz) modeCz.textContent = config.collapseMode ? '▸' : '▾';
 
-  if (config.overlayMode === 'above' || config.overlayMode === 'behind') {
-    fullOverlaySettings.classList.add('active');
-    minifySettings.classList.remove('active');
-    const ov = getActiveOverlay();
-    if(ov) {
-        ( $('op-opacity-slider') as HTMLInputElement ).value = String(ov.opacity);
-        $('op-opacity-value').textContent = Math.round(ov.opacity * 100) + '%';
-    }
-  } else if (config.overlayMode === 'minify') {
-    fullOverlaySettings.classList.remove('active');
-    minifySettings.classList.add('active');
-  } else {
-    fullOverlaySettings.classList.remove('active');
-    minifySettings.classList.remove('active');
+  // --- Mode Settings ---
+  if (ov) {
+    ($('op-opacity-slider') as HTMLInputElement).value = String(ov.opacity);
+    $('op-opacity-value').textContent = Math.round(ov.opacity * 100) + '%';
   }
 
-  ($('op-style-dots') as HTMLInputElement).checked = config.minifyStyle === 'dots';
-  ($('op-style-symbols') as HTMLInputElement).checked = config.minifyStyle === 'symbols';
-  
   const layeringBtns = $('op-layering-btns');
   layeringBtns.innerHTML = '';
-  const behindBtn = document.createElement('button');
-  behindBtn.textContent = 'Behind';
-  behindBtn.className = 'op-button' + (config.overlayMode === 'behind' ? ' active' : '');
-  behindBtn.addEventListener('click', () => { config.overlayMode = 'behind'; saveConfig(['overlayMode']); ensureHook(); updateUI(); });
-  const aboveBtn = document.createElement('button');
-  aboveBtn.textContent = 'Above';
-  aboveBtn.className = 'op-button' + (config.overlayMode === 'above' ? ' active' : '');
-  aboveBtn.addEventListener('click', () => { config.overlayMode = 'above'; saveConfig(['overlayMode']); ensureHook(); updateUI(); });
-  layeringBtns.appendChild(behindBtn);
-  layeringBtns.appendChild(aboveBtn);
-
+  for (const layering of [ 'Behind', 'Above', 'Top' ]) {
+    const button = document.createElement('button');
+    button.textContent = layering;
+    button.className = 'op-button' + (config.overlayLayering === layering.toLowerCase() ? ' active' : '');
+    button.addEventListener('click', async () => {
+      config.overlayLayering = layering.toLowerCase() as 'behind' | 'above' | 'top';
+      saveConfig(['overlayLayering']);
+      updateUI();
+      await updateOverlays();
+    });
+    layeringBtns.appendChild(button);
+  }
 
   // --- Positioning Section ---
   const autoBtn = $('op-autocap-toggle');
@@ -560,41 +652,7 @@ export function updateUI() {
   updateEditorUI();
 
   const exportBtn = $('op-export-overlay') as HTMLButtonElement;
-  const ov = getActiveOverlay();
   const canExport = !!(ov && ov.imageUrl && !ov.isLocal);
   exportBtn.disabled = !canExport;
   exportBtn.title = canExport ? 'Export active overlay JSON' : 'Export disabled for local images';
-}
-
-function rebuildColorFilterUI() {
-  const container = document.getElementById('op-color-filter') as HTMLDivElement;
-  if (!container) return;
-  const ov = getActiveOverlay();
-  if (!ov || !ov.imageBase64) { container.style.display = 'none'; container.innerHTML = ''; return; }
-  if (!ov.colorStats) {
-    container.textContent = 'Analyzing colors…';
-    updateOverlayColorStats(ov).then(async () => { await saveConfig(['overlays']); clearOverlayCache(); rebuildColorFilterUI(); });
-    return;
-  }
-  container.innerHTML = '';
-  const stats = ov.colorStats;
-  const filter = ov.colorFilter || {};
-  const entries = Object.entries(stats).sort((a,b) => b[1]-a[1]);
-  for (const [key,count] of entries) {
-    const hex = rgbKeyToHex(key);
-    const name = WPLACE_NAMES[key] || hex;
-    const row = document.createElement('div');
-    row.className = 'op-color-row';
-    row.innerHTML = `<input type="checkbox" ${filter[key]!==false?'checked':''}/><span class="op-color-swatch" style="background:${hex}"></span><span class="op-color-name">${name}</span><span class="op-color-count">${count}</span>`;
-    const checkbox = row.querySelector('input') as HTMLInputElement;
-    checkbox.addEventListener('change', async () => {
-      if (!ov.colorFilter) ov.colorFilter = {};
-      ov.colorFilter[key] = checkbox.checked;
-      await saveConfig(['overlays']);
-      clearOverlayCache();
-      ensureHook();
-    });
-    container.appendChild(row);
-  }
-  container.style.display = 'flex';
 }

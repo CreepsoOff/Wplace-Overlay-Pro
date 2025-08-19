@@ -1,5 +1,3 @@
-export const NATIVE_FETCH = window.fetch;
-
 export const gmGet = (key: string, def: any) => {
   try {
     if (typeof GM !== 'undefined' && typeof GM.getValue === 'function') return GM.getValue(key, def);
@@ -25,6 +23,24 @@ export function gmFetchBlob(url: string): Promise<Blob> {
         responseType: 'blob',
         onload: (res) => {
           if (res.status >= 200 && res.status < 300 && res.response) resolve(res.response as Blob);
+          else reject(new Error(`GM_xhr failed: ${res.status} ${res.statusText}`));
+        },
+        onerror: () => reject(new Error('GM_xhr network error')),
+        ontimeout: () => reject(new Error('GM_xhr timeout')),
+      });
+    } catch (e) { reject(e); }
+  });
+}
+
+export function gmFetchJson(url: string): Promise<object> {
+  return new Promise((resolve, reject) => {
+    try {
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url,
+        responseType: 'json',
+        onload: (res) => {
+          if (res.status >= 200 && res.status < 300 && res.response) resolve(res.response);
           else reject(new Error(`GM_xhr failed: ${res.status} ${res.statusText}`));
         },
         onerror: () => reject(new Error('GM_xhr network error')),

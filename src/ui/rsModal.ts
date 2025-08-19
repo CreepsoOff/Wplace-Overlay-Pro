@@ -1,11 +1,11 @@
 /// <reference types="tampermonkey" />
 import { createCanvas, createHTMLCanvas, canvasToDataURLSafe, loadImage } from '../core/canvas';
-import { config, saveConfig } from '../core/store';
+import { config, saveConfig, type OverlayItem } from '../core/store';
 import { MAX_OVERLAY_DIM } from '../core/constants';
-import { ensureHook } from '../core/hook';
 import { clearOverlayCache } from '../core/cache';
 import { showToast } from '../core/toast';
-import { updateOverlayColorStats } from '../core/colorFilter';
+import { uid } from '../core/util';
+import { updateOverlays } from '../core/overlay';
 
 // dispatch when an overlay image is updated
 function emitOverlayChanged() {
@@ -67,7 +67,7 @@ type RSRefs = {
 };
 
 type RSState = RSRefs & {
-  ov: any | null;
+  ov: OverlayItem | null;
   img: HTMLImageElement | null;
   origW: number; origH: number;
   mode: 'simple'|'advanced';
@@ -765,10 +765,10 @@ export function buildRSModal() {
         rs!.ov.imageBase64 = dataUrl;
         rs!.ov.imageUrl = null;
         rs!.ov.isLocal = true;
-        await updateOverlayColorStats(rs!.ov);
+        rs!.ov.imageId = uid();
         await saveConfig(['overlays']);
         clearOverlayCache();
-        ensureHook();
+        await updateOverlays();
         emitOverlayChanged();
         closeRSModal();
         showToast(`Applied ${rs!.calcCols}×${rs!.calcRows}.`);
@@ -947,7 +947,7 @@ async function reconstructViaGrid(img: HTMLImageElement, origW: number, origH: n
   return outCanvas;
 }
 
-async function resizeOverlayImage(ov: any, targetW: number, targetH: number) {
+async function resizeOverlayImage(ov: OverlayItem, targetW: number, targetH: number) {
   const img = await loadImage(ov.imageBase64);
   const canvas = createHTMLCanvas(targetW, targetH);
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
@@ -965,9 +965,9 @@ async function resizeOverlayImage(ov: any, targetW: number, targetH: number) {
   ov.imageBase64 = dataUrl;
   ov.imageUrl = null;
   ov.isLocal = true;
-  await updateOverlayColorStats(ov);
+  ov.imageId = uid();
   await saveConfig(['overlays']);
   clearOverlayCache();
-  ensureHook();
+  await updateOverlays();
   emitOverlayChanged();
 }

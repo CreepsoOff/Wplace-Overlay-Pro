@@ -32,8 +32,9 @@ export function injectStyles() {
         border-radius: 16px; color: var(--op-text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
         font-size: 14px; width: 340px; box-shadow: 0 10px 24px rgba(16,24,40,0.12), 0 2px 6px rgba(16,24,40,0.08); user-select: none;
       }
-	  
-	  #op-list-wrap { flex: 1; display: flex; height: 80%; }
+
+	    #op-list-wrap { display: flex; flex: 1; height: 80%; }
+	    .resizable { display: flex; flex-direction: column; height: 300px; resize: vertical; overflow: hidden }
 
       .op-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--op-border); border-radius: 16px 16px 0 0; cursor: grab; }
       .op-header:active { cursor: grabbing; }
@@ -41,17 +42,23 @@ export function injectStyles() {
       .op-header-actions { display: flex; gap: 6px; }
       .op-toggle-btn, .op-hdr-btn { background: transparent; border: 1px solid var(--op-border); color: var(--op-text); border-radius: 10px; padding: 4px 8px; cursor: pointer; }
       .op-toggle-btn:hover, .op-hdr-btn:hover { background: var(--op-btn); }
+      #op-theme-toggle { padding-left: 5px; padding-right: 4px; }
+      #op-small-stats {
+        text-wrap-mode: nowrap;
+        width: 120px;
+        overflow: hidden;
+      }
 
       .op-content { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
       .op-section { display: flex; flex-direction: column; gap: 8px; background: var(--op-subtle); border: 1px solid var(--op-border); border-radius: 12px; padding: 5px; }
-	  .op-section.resizable { display: flex; flex-direction: column; height: 300px; resize: vertical; overflow: hidden }
 
       .op-section-title { display: flex; align-items: center; justify-content: space-between; }
-      .op-title-text { font-weight: 600; }
+      .op-title-text { font-weight: 600; padding-left: 6px; }
       .op-chevron { background: transparent; border: 1px solid var(--op-border); border-radius: 8px; padding: 2px 6px; cursor: pointer; }
       .op-chevron:hover { background: var(--op-btn); }
 
-      .op-row { display: flex; align-items: center; gap: 8px; }
+      .op-row { display: flex; align-items: center; gap: 8px; padding-left: 6px; padding-right: 6px; padding-bottom: 4px; }
+      .op-row.in-header { padding: 0; gap: 5px; align-items: baseline; }
       .op-row.space { justify-content: space-between; }
       .op-row.center { justify-content: center; text-align: center; }
       .op-row-col { display: flex; flex-direction: column; gap: 4px; }
@@ -59,6 +66,7 @@ export function injectStyles() {
       .op-small-text { font-size: 11px; color: var(--op-muted); }
 
       .op-button { background: var(--op-btn); color: var(--op-text); border: 1px solid var(--op-btn-border); border-radius: 10px; padding: 6px 10px; cursor: pointer; }
+      .op-button.in-header { padding: 2px 6px; }
       .op-button:hover { background: var(--op-btn-hover); }
       .op-button:disabled { opacity: 0.5; cursor: not-allowed; }
       .op-button.icon { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
@@ -74,13 +82,12 @@ export function injectStyles() {
 
       .op-muted { color: var(--op-muted); font-size: 12px; }
 
-     .op-tabs { padding: 4px; border-bottom: 1px solid var(--op-border); }
-     .op-tab-btn { flex: 1; padding: 6px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--op-text); cursor: pointer; }
-     .op-tab-btn:hover { background: var(--op-btn-hover); }
-     .op-tab-btn.active { background: var(--op-btn); border-color: var(--op-btn-border); font-weight: 600; }
+      .op-tabs { padding: 4px; border-bottom: 1px solid var(--op-border); }
+      .op-tab-btn { flex: 1; padding: 6px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--op-text); cursor: pointer; }
+      .op-tab-btn:hover { background: var(--op-btn-hover); }
+      .op-tab-btn.active { background: var(--op-btn); border-color: var(--op-btn-border); font-weight: 600; }
 
-     .op-mode-setting { display: none; padding: 6px; }
-     .op-mode-setting.active { display: flex; flex-direction: column; gap: 8px; }
+      .op-mode-setting { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
 
       .op-preview { width: 100%; height: 90px; background: var(--op-bg); display: flex; align-items: center; justify-content: center; border: 2px dashed color-mix(in oklab, var(--op-accent) 40%, var(--op-border)); border-radius: 10px; overflow: hidden; position: relative; cursor: pointer; }
       .op-preview img { max-width: 100%; max-height: 100%; display: block; pointer-events: none; }
@@ -89,12 +96,6 @@ export function injectStyles() {
 
       .op-icon-btn { background: var(--op-btn); color: var(--op-text); border: 1px solid var(--op-btn-border); border-radius: 10px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
       .op-icon-btn:hover { background: var(--op-btn-hover); }
-
-      .op-color-filter { display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow: auto; border: 1px solid var(--op-border); border-radius: 8px; padding: 4px; background: var(--op-bg); }
-      .op-color-row { display: flex; align-items: center; gap: 6px; }
-      .op-color-swatch { width: 16px; height: 16px; border: 1px solid var(--op-border); border-radius: 4px; }
-      .op-color-name { flex: 1; }
-      .op-color-count { font-size: 12px; color: var(--op-muted); }
 
       .op-danger { background: #fee2e2; border-color: #fecaca; color: #7f1d1d; }
       .op-danger-text { color: #dc2626; font-weight: 600; }

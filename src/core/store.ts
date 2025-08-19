@@ -8,25 +8,26 @@ export type OverlayItem = {
   enabled: boolean;
   imageUrl: string | null;
   imageBase64: string | null;
+  imageId: string;
   isLocal: boolean;
   pixelUrl: string | null;
   offsetX: number;
   offsetY: number;
   opacity: number;
-  colorStats?: Record<string, number>;
-  colorFilter?: Record<string, boolean>;
 };
 
 export type Config = {
   overlays: OverlayItem[];
   activeOverlayId: string | null;
-  overlayMode: 'behind' | 'above' | 'minify' | 'original';
-  minifyStyle: 'dots' | 'symbols';
+  overlayLayering: 'behind' | 'above' | 'top';
+  overlayStyle: 'full' | 'dots' | 'none';
   isPanelCollapsed: boolean;
   autoCapturePixelUrl: boolean;
   panelX: number | null;
   panelY: number | null;
   theme: 'light' | 'dark';
+  collapseStats: boolean;
+  collapseMode: boolean;
   collapseList: boolean;
   collapseEditor: boolean;
   collapsePositioning: boolean;
@@ -39,13 +40,15 @@ export type Config = {
 export const config: Config = {
   overlays: [],
   activeOverlayId: null,
-  overlayMode: 'behind',
-  minifyStyle: 'dots',
+  overlayLayering: 'top',
+  overlayStyle: 'dots',
   isPanelCollapsed: false,
   autoCapturePixelUrl: false,
   panelX: null,
   panelY: null,
   theme: 'light',
+  collapseStats: false,
+  collapseMode: false,
   collapseList: false,
   collapseEditor: false,
   collapsePositioning: false,
@@ -53,6 +56,10 @@ export const config: Config = {
   ccPaidKeys: DEFAULT_PAID_KEYS.slice(),
   ccZoom: 1.0,
   ccRealtime: false,
+};
+
+export const me: { data: any } = {
+  data: { }
 };
 
 export const CONFIG_KEYS = Object.keys(config) as (keyof Config)[];
