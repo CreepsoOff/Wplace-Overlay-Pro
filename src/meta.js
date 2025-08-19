@@ -15,6 +15,6 @@
 // @grant        unsafeWindow
 // @connect      *
 // @run-at       document-start
-// @downloadURL  https://github.com/CreepsoOff/Wplace-Overlay-Pro/releases/download/development/configs-epic-overlay-pro-fork.user.js
-// @updateURL    https://github.com/CreepsoOff/Wplace-Overlay-Pro/releases/download/development/configs-epic-overlay-pro-fork.user.js
+// @downloadURL  https://github.com/CreepsoOff/Wplace-Overlay-Pro/releases/download/development/overlay-pro-tt.user.js
+// @updateURL    https://github.com/CreepsoOff/Wplace-Overlay-Pro/releases/download/development/overlay-pro-tt.user.js
 // ==/UserScript==
