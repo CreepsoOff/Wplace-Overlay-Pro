@@ -100,6 +100,16 @@ export async function buildOverlayDataForChunkUnified(
       const canvas = createCanvas(wImg, hImg) as any;
       const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
       ctx.drawImage(img as any, 0, 0);
+      const cf = ov.colorFilter;
+      if (cf) {
+        const id = ctx.getImageData(0,0,wImg,hImg);
+        const data = id.data;
+        for (let i=0;i<data.length;i+=4) {
+          const r = data[i], g = data[i+1], b = data[i+2];
+          if (cf[`${r},${g},${b}`] === false) data[i+3] = 0;
+        }
+        ctx.putImageData(id,0,0);
+      }
       return { url: await canvasToDataURLSafe(canvas), coordinates };
     }
     case 'dots': {
@@ -111,9 +121,20 @@ export async function buildOverlayDataForChunkUnified(
       const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
       ctx.imageSmoothingEnabled = false;
 
+      const temp = createCanvas(wImg, hImg) as any;
+      const tctx = temp.getContext('2d', { willReadFrequently: true })!;
+      tctx.drawImage(img as any, 0, 0);
+      const data = tctx.getImageData(0,0,wImg,hImg).data;
+
+      const cf = ov.colorFilter;
       const center = Math.floor((scale - 1) / 2);
       for (let y = 0; y < hImg; y++) {
         for (let x = 0; x < wImg; x++) {
+          const idx = (y * wImg + x) * 4;
+          const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+          if (a === 0) continue;
+          if (r === 0xde && g === 0xfa && b === 0xce) continue;
+          if (cf && cf[`${r},${g},${b}`] === false) continue;
           ctx.drawImage(img as any, x, y, 1, 1, x * scale + center, y * scale + center, 1, 1);
         }
       }

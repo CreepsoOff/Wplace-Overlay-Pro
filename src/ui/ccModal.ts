@@ -7,6 +7,7 @@ import { clearOverlayCache, paletteDetectionCache } from '../core/cache';
 import { showToast } from '../core/toast';
 import { uid } from '../core/util';
 import { updateOverlays } from '../core/overlay';
+import { updateOverlayColorStats } from '../core/colorFilter';
 
 // dispatch when an overlay image is updated
 function emitOverlayChanged() {
@@ -179,10 +180,11 @@ export function buildCCModal() {
     const dataUrl = cc!.processedCanvas.toDataURL('image/png');
     ov.imageBase64 = dataUrl; ov.imageUrl = null; ov.isLocal = true;
     ov.imageId = uid();
-    
+
     // Mark the processed image as palette-perfect for optimization
     paletteDetectionCache.set(dataUrl, true);
-    
+
+    await updateOverlayColorStats(ov);
     await saveConfig(['overlays']); clearOverlayCache();
     await updateOverlays();
     emitOverlayChanged();

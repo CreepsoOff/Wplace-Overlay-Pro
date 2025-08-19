@@ -14,6 +14,8 @@ export type OverlayItem = {
   offsetX: number;
   offsetY: number;
   opacity: number;
+  colorStats?: Record<string, number>;
+  colorFilter?: Record<string, boolean>;
 };
 
 export type Config = {

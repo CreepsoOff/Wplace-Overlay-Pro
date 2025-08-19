@@ -8,6 +8,8 @@ import { extractPixelCoords, updateOverlays } from '../core/overlay';
 import { buildCCModal, openCCModal } from './ccModal';
 import { buildRSModal, openRSModal } from './rsModal';
 import { EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from '../core/events';
+import { updateOverlayColorStats, rgbKeyToHex } from '../core/colorFilter';
+import { WPLACE_NAMES } from '../core/palette';
 
 let panelEl: HTMLDivElement | null = null;
 
@@ -170,6 +172,8 @@ export function createUI() {
             </div>
 
             <div class="op-row"><span class="op-muted" id="op-coord-display"></span></div>
+            <div class="op-row"><label style="width: 90px;">Color Filter</label></div>
+            <div id="op-color-filter" class="op-color-filter" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -242,6 +246,7 @@ async function setOverlayImageFromURL(ov: OverlayItem, url: string) {
   const base64 = await urlToDataURL(url);
   ov.imageUrl = url; ov.imageBase64 = base64; ov.isLocal = false;
   ov.imageId = uid();
+  await updateOverlayColorStats(ov);
   await saveConfig(['overlays']); clearOverlayCache();
   config.autoCapturePixelUrl = true; await saveConfig(['autoCapturePixelUrl']);
   updateUI();
@@ -254,6 +259,7 @@ async function setOverlayImageFromFile(ov: OverlayItem, file: File) {
   const base64 = await fileToDataURL(file);
   ov.imageBase64 = base64; ov.imageUrl = null; ov.isLocal = true;
   ov.imageId = uid();
+  await updateOverlayColorStats(ov);
   await saveConfig(['overlays']); clearOverlayCache();
   config.autoCapturePixelUrl = true; await saveConfig(['autoCapturePixelUrl']);
   updateUI();
@@ -291,6 +297,7 @@ async function importOverlayFromJSON(jsonText: string) {
           override.imageBase64 = base64;
           override.isLocal = false;
           override.imageId = uid();
+          await updateOverlayColorStats(override);
         }
         catch (e) {
           console.error('Import failed for', item.imageUrl, e);
@@ -315,6 +322,7 @@ async function importOverlayFromJSON(jsonText: string) {
       try {
         const base64 = await urlToDataURL(imageUrl);
         const ov = { id: uid(), name, enabled: true, imageUrl, imageBase64: base64, imageId: uid(), isLocal: false, pixelUrl, offsetX, offsetY, opacity };
+        await updateOverlayColorStats(ov);
         config.overlays.push(ov); imported++;
       } catch (e) { console.error('Import failed for', imageUrl, e); failed++; }
     }
@@ -533,14 +541,49 @@ function updateEditorUI() {
       ? `Ref: chunk ${coords.chunk1}/${coords.chunk2} at (${coords.posX}, ${coords.posY})`
       : `No pixel anchor set. Enable placement and click a pixel.`;
   }
-  
+
 
   const indicator = $('op-offset-indicator');
   if (indicator) indicator.textContent = `Offset X ${ov.offsetX}, Y ${ov.offsetY}`;
 
+  rebuildColorFilterUI();
+
   editorBody.style.display = config.collapseEditor ? 'none' : 'block';
   const chevron = $('op-collapse-editor');
   if (chevron) chevron.textContent = config.collapseEditor ? '▸' : '▾';
+}
+
+function rebuildColorFilterUI() {
+  const container = document.getElementById('op-color-filter') as HTMLDivElement;
+  if (!container) return;
+  const ov = getActiveOverlay();
+  if (!ov || !ov.imageBase64) { container.style.display = 'none'; container.innerHTML = ''; return; }
+  if (!ov.colorStats) {
+    container.textContent = 'Analyzing colors…';
+    updateOverlayColorStats(ov).then(async () => { await saveConfig(['overlays']); clearOverlayCache(); await updateOverlays(); rebuildColorFilterUI(); });
+    return;
+  }
+  container.innerHTML = '';
+  const stats = ov.colorStats;
+  const filter = ov.colorFilter || {};
+  const entries = Object.entries(stats).sort((a,b) => b[1]-a[1]);
+  for (const [key,count] of entries) {
+    const hex = rgbKeyToHex(key);
+    const name = WPLACE_NAMES[key] || hex;
+    const row = document.createElement('div');
+    row.className = 'op-color-row';
+    row.innerHTML = `<input type="checkbox" ${filter[key]!==false?'checked':''}/><span class="op-color-swatch" style="background:${hex}"></span><span class="op-color-name">${name}</span><span class="op-color-count">${count}</span>`;
+    const checkbox = row.querySelector('input') as HTMLInputElement;
+    checkbox.addEventListener('change', async () => {
+      if (!ov.colorFilter) ov.colorFilter = {};
+      ov.colorFilter[key] = checkbox.checked;
+      await saveConfig(['overlays']);
+      clearOverlayCache();
+      await updateOverlays();
+    });
+    container.appendChild(row);
+  }
+  container.style.display = 'flex';
 }
 
 export function updateThemeToggle() {

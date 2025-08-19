@@ -4,6 +4,7 @@ import { matchPixelUrl, extractPixelCoords, matchMeUrl, updateOverlays } from '.
 import { emit, EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from './events';
 import { updateUI } from '../ui/panel';
 import { type Map } from 'maplibre-gl';
+import { updatePixelCoords } from '../ui/coordDisplay';
 
 let hookInstalled = false;
 let updateUICallback: null | (() => void) = null;
@@ -71,30 +72,33 @@ export function attachHook() {
       }
     }
 
+    const pixelMatch = matchPixelUrl(urlStr);
+    if (pixelMatch) {
+      const c = extractPixelCoords(pixelMatch.normalized);
+      updatePixelCoords(c.chunk1, c.chunk2, c.posX, c.posY);
+    }
+
     // Anchor auto-capture: watch pixel endpoint, then store/normalize
-    if (config.autoCapturePixelUrl && config.activeOverlayId) {
-      const pixelMatch = matchPixelUrl(urlStr);
-      if (pixelMatch) {
-        const ov = config.overlays.find(o => o.id === config.activeOverlayId);
-        if (ov) {
-          const changed = (ov.pixelUrl !== pixelMatch.normalized);
-          if (changed) {
-            ov.pixelUrl = pixelMatch.normalized;
-            ov.offsetX = 0; ov.offsetY = 0;
-            await saveConfig(['overlays']);
+    if (config.autoCapturePixelUrl && config.activeOverlayId && pixelMatch) {
+      const ov = config.overlays.find(o => o.id === config.activeOverlayId);
+      if (ov) {
+        const changed = (ov.pixelUrl !== pixelMatch.normalized);
+        if (changed) {
+          ov.pixelUrl = pixelMatch.normalized;
+          ov.offsetX = 0; ov.offsetY = 0;
+          await saveConfig(['overlays']);
 
-            // turn off autocapture and notify UI (via events)
-            config.autoCapturePixelUrl = false;
-            await saveConfig(['autoCapturePixelUrl']);
+          // turn off autocapture and notify UI (via events)
+          config.autoCapturePixelUrl = false;
+          await saveConfig(['autoCapturePixelUrl']);
 
-            // keep legacy callback for any existing wiring
-            updateUICallback?.();
+          // keep legacy callback for any existing wiring
+          updateUICallback?.();
 
-            const c = extractPixelCoords(ov.pixelUrl);
-            emit(EV_ANCHOR_SET, { overlayId: ov.id, name: ov.name, chunk1: c.chunk1, chunk2: c.chunk2, posX: c.posX, posY: c.posY });
-            emit(EV_AUTOCAP_CHANGED, { enabled: false });
-            await updateOverlays();
-          }
+          const c = extractPixelCoords(ov.pixelUrl);
+          emit(EV_ANCHOR_SET, { overlayId: ov.id, name: ov.name, chunk1: c.chunk1, chunk2: c.chunk2, posX: c.posX, posY: c.posY });
+          emit(EV_AUTOCAP_CHANGED, { enabled: false });
+          await updateOverlays();
         }
       }
     }
