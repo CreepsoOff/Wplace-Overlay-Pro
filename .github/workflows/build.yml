@@ -1,10 +1,10 @@
 name: Build
 on:
   workflow_dispatch:
-#  push:
-#    branches:
-#   - '**'              # every branch
-#    - '!no-build-**'    # unless marked as no-build
+  push:
+    branches:
+    - '**'              # every branch
+    - '!no-build-**'    # unless marked as no-build
 
 jobs:
   build:
