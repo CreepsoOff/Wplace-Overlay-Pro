@@ -30,7 +30,7 @@ export function injectStyles() {
       #overlay-pro-panel {
         position: fixed; z-index: 9999; background: var(--op-bg); border: 1px solid var(--op-border);
         border-radius: 16px; color: var(--op-text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-        font-size: 14px; width: 340px; box-shadow: 0 10px 24px rgba(16,24,40,0.12), 0 2px 6px rgba(16,24,40,0.08); user-select: none;
+        font-size: 14px; width: 340px; box-shadow: 0 10px 24px rgba(16,24,40,0.12), 0 2px 6px rgba(16,24,40,0.08); user-select: none; max-height: 100vh; overflow-y: auto;
       }
 
 	    #op-list-wrap { display: flex; flex: 1; height: 80%; }
