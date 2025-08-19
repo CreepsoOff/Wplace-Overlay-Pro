@@ -129,7 +129,7 @@ These are emitted via the internal event helpers (see `src/core/events.ts`).
 
 ## License & credits
 - License: GPLv3 (see [`LICENSE.md`](LICENSE.md:1)
-
+- Credits: [ShinkoNet](https://github.com/ShinkoNet/Wplace-Overlay-Pro) and [cgytrus (ConfiG)](https://github.com/cgytrus/Wplace-Overlay-Pro)
 ---
 
 ## Where to start in the source
@@ -139,3 +139,4 @@ These are emitted via the internal event helpers (see `src/core/events.ts`).
 - Resize modal & reconstruction logic: [`src/ui/rsModal.ts`](src/ui/rsModal.ts:1)  
 - Overlay processing (color LUT, build/compose logic): [`src/core/overlay.ts`](src/core/overlay.ts:1)  
 - GM helpers and storage: [`src/core/gm.ts`](src/core/gm.ts:1) and [`src/core/store.ts`](src/core/store.ts:1)
+
