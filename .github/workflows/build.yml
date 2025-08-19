@@ -39,15 +39,17 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Commit dist to development branch
+      - name: Commit dist to current branch
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git checkout -B development
+          
+          CURRENT_BRANCH=${GITHUB_REF_NAME}
+          
           mkdir -p dist
-          git add dist/overlay-pro-tt.user.js
+          git add -f dist/overlay-pro-tt.user.js  
           git commit -m "update userscript for $GITHUB_SHA" || echo "no changes"
-          git push origin development --force
+          git push origin HEAD:$CURRENT_BRANCH
 
       - name: Update Development Release
         uses: andelf/nightly-release@main
