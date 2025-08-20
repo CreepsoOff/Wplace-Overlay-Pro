@@ -21001,6 +21001,7 @@ ${n2.shaderPreludeCode.vertexSource}`, define: n2.shaderDefine }, defaultProject
     collapseList: false,
     collapseEditor: false,
     collapsePositioning: false,
+    collapseColorFilter: false,
     ccFreeKeys: DEFAULT_FREE_KEYS.slice(),
     ccPaidKeys: DEFAULT_PAID_KEYS.slice(),
     ccZoom: 1,
@@ -22781,6 +22782,20 @@ ${n2.shaderPreludeCode.vertexSource}`, define: n2.shaderDefine }, defaultProject
             </div>
         </div>
 
+        <div class="op-section" id="op-color-filter-section">
+          <div class="op-section-title">
+            <div class="op-title-left">
+              <span class="op-title-text">Color filtering</span>
+            </div>
+            <div class="op-title-right">
+              <button class="op-chevron" id="op-collapse-color-filter" title="Collapse/Expand">\u25BE</button>
+            </div>
+          </div>
+          <div id="op-color-filter-body">
+            <div id="op-color-filter" class="op-color-filter" style="display:none;"></div>
+          </div>
+        </div>
+
         <div class="op-section">
           <div class="op-section-title">
             <div class="op-title-left">
@@ -22839,8 +22854,6 @@ ${n2.shaderPreludeCode.vertexSource}`, define: n2.shaderDefine }, defaultProject
             </div>
 
             <div class="op-row"><span class="op-muted" id="op-coord-display"></span></div>
-            <div class="op-row"><label style="width: 90px;">Color Filter</label></div>
-            <div id="op-color-filter" class="op-color-filter" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -23120,6 +23133,11 @@ ${n2.shaderPreludeCode.vertexSource}`, define: n2.shaderDefine }, defaultProject
     $("op-collapse-positioning").addEventListener("click", () => {
       config.collapsePositioning = !config.collapsePositioning;
       saveConfig(["collapsePositioning"]);
+      updateUI();
+    });
+    $("op-collapse-color-filter").addEventListener("click", () => {
+      config.collapseColorFilter = !config.collapseColorFilter;
+      saveConfig(["collapseColorFilter"]);
       updateUI();
     });
     $("op-name").addEventListener("change", async (e) => {
@@ -23474,6 +23492,10 @@ ${n2.shaderPreludeCode.vertexSource}`, define: n2.shaderDefine }, defaultProject
     const positioningCz = $("op-collapse-positioning");
     if (positioningBody) positioningBody.style.display = config.collapsePositioning ? "none" : "block";
     if (positioningCz) positioningCz.textContent = config.collapsePositioning ? "\u25B8" : "\u25BE";
+    const colorFilterBody = $("op-color-filter-body");
+    const colorFilterCz = $("op-collapse-color-filter");
+    if (colorFilterBody) colorFilterBody.style.display = config.collapseColorFilter ? "none" : "block";
+    if (colorFilterCz) colorFilterCz.textContent = config.collapseColorFilter ? "\u25B8" : "\u25BE";
     const listWrap = $("op-list-wrap");
     const listCz = $("op-collapse-list");
     listWrap.style.display = config.collapseList ? "none" : "block";
