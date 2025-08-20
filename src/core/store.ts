@@ -33,6 +33,7 @@ export type Config = {
   collapseList: boolean;
   collapseEditor: boolean;
   collapsePositioning: boolean;
+  collapseColorFilter: boolean;
   ccFreeKeys: string[];
   ccPaidKeys: string[];
   ccZoom: number;
@@ -54,6 +55,7 @@ export const config: Config = {
   collapseList: false,
   collapseEditor: false,
   collapsePositioning: false,
+  collapseColorFilter: false,
   ccFreeKeys: DEFAULT_FREE_KEYS.slice(),
   ccPaidKeys: DEFAULT_PAID_KEYS.slice(),
   ccZoom: 1.0,

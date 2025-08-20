@@ -114,6 +114,20 @@ export function createUI() {
             </div>
         </div>
 
+        <div class="op-section" id="op-color-filter-section">
+          <div class="op-section-title">
+            <div class="op-title-left">
+              <span class="op-title-text">Color filtering</span>
+            </div>
+            <div class="op-title-right">
+              <button class="op-chevron" id="op-collapse-color-filter" title="Collapse/Expand">▾</button>
+            </div>
+          </div>
+          <div id="op-color-filter-body">
+            <div id="op-color-filter" class="op-color-filter" style="display:none;"></div>
+          </div>
+        </div>
+
         <div class="op-section">
           <div class="op-section-title">
             <div class="op-title-left">
@@ -172,8 +186,6 @@ export function createUI() {
             </div>
 
             <div class="op-row"><span class="op-muted" id="op-coord-display"></span></div>
-            <div class="op-row"><label style="width: 90px;">Color Filter</label></div>
-            <div id="op-color-filter" class="op-color-filter" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -381,6 +393,7 @@ function addEventListeners(panel: HTMLDivElement) {
   $('op-collapse-list').addEventListener('click', () => { config.collapseList = !config.collapseList; saveConfig(['collapseList']); updateUI(); });
   $('op-collapse-editor').addEventListener('click', () => { config.collapseEditor = !config.collapseEditor; saveConfig(['collapseEditor']); updateUI(); });
   $('op-collapse-positioning').addEventListener('click', () => { config.collapsePositioning = !config.collapsePositioning; saveConfig(['collapsePositioning']); updateUI(); });
+  $('op-collapse-color-filter').addEventListener('click', () => { config.collapseColorFilter = !config.collapseColorFilter; saveConfig(['collapseColorFilter']); updateUI(); });
 
   $('op-name').addEventListener('change', async (e: any) => {
     const ov = getActiveOverlay(); if (!ov) return;
@@ -685,6 +698,12 @@ export function updateUI() {
   const positioningCz = $('op-collapse-positioning');
   if(positioningBody) positioningBody.style.display = config.collapsePositioning ? 'none' : 'block';
   if (positioningCz) positioningCz.textContent = config.collapsePositioning ? '▸' : '▾';
+
+  const colorFilterBody = $('op-color-filter-body');
+  const colorFilterCz = $('op-collapse-color-filter');
+  if (colorFilterBody) colorFilterBody.style.display = config.collapseColorFilter ? 'none' : 'block';
+  if (colorFilterCz) colorFilterCz.textContent = config.collapseColorFilter ? '▸' : '▾';
+
 
   const listWrap = $('op-list-wrap');
   const listCz = $('op-collapse-list');
