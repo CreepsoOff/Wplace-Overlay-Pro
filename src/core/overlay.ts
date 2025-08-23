@@ -5,7 +5,14 @@ import { showToast } from './toast';
 import { config, saveConfig, type OverlayItem } from './store';
 import { WPLACE_FREE, WPLACE_PAID } from './palette';
 import { getUpdateUI, map } from './hook';
-import { ImageSource, type Coordinates } from 'maplibre-gl';
+
+// Minimal types to avoid bundling the full maplibre-gl library
+type Coordinates = [
+  [number, number],
+  [number, number],
+  [number, number],
+  [number, number]
+];
 
 const ALL_COLORS = [...WPLACE_FREE, ...WPLACE_PAID];
 const colorIndexMap = new Map<string, number>();
@@ -161,7 +168,7 @@ export async function updateOverlays() {
   for (const ov of currentOverlays) {
     const name = `op-${ov.name}`;
 
-    const existingSource = map.getSource<ImageSource>(name);
+    const existingSource = map.getSource(name) as any;
     const existingLayer = map.getLayer(name);
 
     try {
