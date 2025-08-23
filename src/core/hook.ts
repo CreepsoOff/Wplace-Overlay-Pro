@@ -3,9 +3,20 @@ import { config, me, saveConfig, getActiveOverlay } from './store';
 import { matchPixelUrl, extractPixelCoords, matchMeUrl, updateOverlays } from './overlay';
 import { emit, EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from './events';
 import { updateUI } from '../ui/panel';
-import { type Map } from 'maplibre-gl';
 import { updatePixelCoords } from '../ui/coordDisplay';
 import { updateOverlayColorStats } from './colorFilter';
+
+// Minimal map type to avoid bundling maplibre-gl
+type Map = {
+  getLayer(id: string): any;
+  removeLayer(id: string): void;
+  getSource(id: string): any;
+  removeSource(id: string): void;
+  addSource(id: string, source: any): void;
+  addLayer(layer: any, beforeId?: string): void;
+  setPaintProperty(layerId: string, name: string, value: any): void;
+  moveLayer(id: string, beforeId?: string): void;
+};
 
 let hookInstalled = false;
 let updateUICallback: null | (() => void) = null;
