@@ -104,7 +104,15 @@ export async function updateOverlayColorStats(ov: OverlayItem) {
   }
 
   ov.colorStats = stats;
-  const filter: Record<string, boolean> = {};
-  for (const k of Object.keys(stats)) filter[k] = true;
+
+  const filter = ov.colorFilter || {} as Record<string, boolean>;
+  // Remove colors no longer present
+  for (const k of Object.keys(filter)) {
+    if (!(k in stats)) delete filter[k];
+  }
+  // Ensure all colors default to true
+  for (const k of Object.keys(stats)) {
+    if (!(k in filter)) filter[k] = true;
+  }
   ov.colorFilter = filter;
 }

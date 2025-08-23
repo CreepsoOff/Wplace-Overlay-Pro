@@ -1,10 +1,11 @@
 /// <reference types="tampermonkey" />
-import { config, me, saveConfig } from './store';
+import { config, me, saveConfig, getActiveOverlay } from './store';
 import { matchPixelUrl, extractPixelCoords, matchMeUrl, updateOverlays } from './overlay';
 import { emit, EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from './events';
 import { updateUI } from '../ui/panel';
 import { type Map } from 'maplibre-gl';
 import { updatePixelCoords } from '../ui/coordDisplay';
+import { updateOverlayColorStats } from './colorFilter';
 
 let hookInstalled = false;
 let updateUICallback: null | (() => void) = null;
@@ -57,9 +58,20 @@ export function attachHook() {
         if (!ct.includes('application/json')) return response;
 
         const json = await response.json();
+        const prevPixels = typeof me.data?.pixelsPainted === 'number' ? me.data.pixelsPainted : null;
         me.data = json;
 
         updateUI();
+
+        if (prevPixels !== null && json.pixelsPainted > prevPixels) {
+          const ov = getActiveOverlay();
+          if (ov && ov.colorStats) {
+            updateOverlayColorStats(ov).then(async () => {
+              await saveConfig(['overlays']);
+              updateUI();
+            });
+          }
+        }
 
         return new Response(new Blob([JSON.stringify(json)]), {
           status: response.status,
