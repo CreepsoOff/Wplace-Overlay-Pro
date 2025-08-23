@@ -458,6 +458,7 @@ function addEventListeners(panel: HTMLDivElement) {
   const nudge = async (dx: number, dy: number) => {
     const ov = getActiveOverlay(); if (!ov) return;
     ov.offsetX += dx; ov.offsetY += dy;
+    await updateOverlayColorStats(ov);
     await saveConfig(['overlays']); clearOverlayCache(); updateUI();
     await updateOverlays();
   };
