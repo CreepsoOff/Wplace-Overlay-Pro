@@ -579,13 +579,13 @@ function rebuildColorFilterUI() {
   container.innerHTML = '';
   const stats = ov.colorStats;
   const filter = ov.colorFilter || {};
-  const entries = Object.entries(stats).sort((a,b) => b[1]-a[1]);
-  for (const [key,count] of entries) {
+  const entries = Object.entries(stats).sort((a,b) => b[1].total - a[1].total);
+  for (const [key,stat] of entries) {
     const hex = rgbKeyToHex(key);
     const name = WPLACE_NAMES[key] || hex;
     const row = document.createElement('div');
     row.className = 'op-color-row';
-    row.innerHTML = `<input type="checkbox" ${filter[key]!==false?'checked':''}/><span class="op-color-swatch" style="background:${hex}"></span><span class="op-color-name">${name}</span><span class="op-color-count">${count}</span>`;
+    row.innerHTML = `<input type="checkbox" ${filter[key]!==false?'checked':''}/><span class="op-color-swatch" style="background:${hex}"></span><span class="op-color-name">${name}</span><span class="op-color-count">${stat.remaining}/${stat.total}</span>`;
     const checkbox = row.querySelector('input') as HTMLInputElement;
     checkbox.addEventListener('change', async () => {
       if (!ov.colorFilter) ov.colorFilter = {};
