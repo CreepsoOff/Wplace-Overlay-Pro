@@ -10,6 +10,7 @@ import { updateOverlayColorStats } from './colorFilter';
 let hookInstalled = false;
 let updateUICallback: null | (() => void) = null;
 const page: any = unsafeWindow;
+let tileUpdateTimeout: number | null = null;
 
 export function setUpdateUI(cb: () => void) {
   updateUICallback = cb;
@@ -88,6 +89,24 @@ export function attachHook() {
     if (pixelMatch) {
       const c = extractPixelCoords(pixelMatch.normalized);
       updatePixelCoords(c.chunk1, c.chunk2, c.posX, c.posY);
+    }
+
+    const tileMatch = urlStr.match(/backend\.wplace\.live\/files\/s0\/tiles\/(\d+)\/(\d+)\.png/);
+    if (tileMatch) {
+      const tx = tileMatch[1];
+      const ty = tileMatch[2];
+      const ov = getActiveOverlay();
+      if (ov && ov.tileKeys && ov.tileKeys.includes(`${tx},${ty}`)) {
+        if (tileUpdateTimeout) clearTimeout(tileUpdateTimeout);
+        tileUpdateTimeout = setTimeout(async () => {
+          const cur = getActiveOverlay();
+          if (cur) {
+            await updateOverlayColorStats(cur);
+            await saveConfig(['overlays']);
+            updateUI();
+          }
+        }, 1000);
+      }
     }
 
     // Anchor auto-capture: watch pixel endpoint, then store/normalize

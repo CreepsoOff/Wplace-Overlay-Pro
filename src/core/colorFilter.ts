@@ -53,6 +53,7 @@ export async function updateOverlayColorStats(ov: OverlayItem) {
   }
 
   if (base) {
+    ov.tileKeys = Array.from(neededTiles);
     const tileCache = new Map<string, Uint8ClampedArray>();
     const tilePromises = Array.from(neededTiles).map(async key => {
       const [tx, ty] = key.split(',').map(n => parseInt(n, 10));
@@ -99,6 +100,7 @@ export async function updateOverlayColorStats(ov: OverlayItem) {
       }
     }
   } else {
+    ov.tileKeys = undefined;
     // No anchor set – everything is considered remaining
     for (const key of Object.keys(stats)) stats[key].remaining = stats[key].total;
   }
