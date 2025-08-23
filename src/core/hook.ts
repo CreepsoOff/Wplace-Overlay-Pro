@@ -130,6 +130,7 @@ export function attachHook() {
         if (changed) {
           ov.pixelUrl = pixelMatch.normalized;
           ov.offsetX = 0; ov.offsetY = 0;
+          await updateOverlayColorStats(ov);
           await saveConfig(['overlays']);
 
           // turn off autocapture and notify UI (via events)
