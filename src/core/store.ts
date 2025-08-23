@@ -14,8 +14,9 @@ export type OverlayItem = {
   offsetX: number;
   offsetY: number;
   opacity: number;
-  colorStats?: Record<string, number>;
+  colorStats?: Record<string, { total: number; remaining: number }>;
   colorFilter?: Record<string, boolean>;
+  tileKeys?: string[];
 };
 
 export type Config = {

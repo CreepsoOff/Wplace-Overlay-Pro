@@ -118,6 +118,7 @@ export function createUI() {
           <div class="op-section-title">
             <div class="op-title-left">
               <span class="op-title-text">Color filtering</span>
+              <span class="op-small-text" id="op-color-progress-total" style="margin-left:4px;"></span>
             </div>
             <div class="op-title-right">
               <button class="op-chevron" id="op-collapse-color-filter" title="Collapse/Expand">▾</button>
@@ -570,22 +571,25 @@ function rebuildColorFilterUI() {
   const container = document.getElementById('op-color-filter') as HTMLDivElement;
   if (!container) return;
   const ov = getActiveOverlay();
-  if (!ov || !ov.imageBase64) { container.style.display = 'none'; container.innerHTML = ''; return; }
+  const progressEl = document.getElementById('op-color-progress-total');
+  if (!ov || !ov.imageBase64) { if(progressEl) progressEl.textContent=''; container.style.display = 'none'; container.innerHTML = ''; return; }
   if (!ov.colorStats) {
     container.textContent = 'Analyzing colors…';
+    if(progressEl) progressEl.textContent = '';
     updateOverlayColorStats(ov).then(async () => { await saveConfig(['overlays']); clearOverlayCache(); await updateOverlays(); rebuildColorFilterUI(); });
     return;
   }
   container.innerHTML = '';
   const stats = ov.colorStats;
   const filter = ov.colorFilter || {};
-  const entries = Object.entries(stats).sort((a,b) => b[1]-a[1]);
-  for (const [key,count] of entries) {
+  const entries = Object.entries(stats).sort((a,b) => b[1].total - a[1].total);
+  let total = 0; let remaining = 0;
+  for (const [key,stat] of entries) {
     const hex = rgbKeyToHex(key);
     const name = WPLACE_NAMES[key] || hex;
     const row = document.createElement('div');
     row.className = 'op-color-row';
-    row.innerHTML = `<input type="checkbox" ${filter[key]!==false?'checked':''}/><span class="op-color-swatch" style="background:${hex}"></span><span class="op-color-name">${name}</span><span class="op-color-count">${count}</span>`;
+    row.innerHTML = `<input type="checkbox" ${filter[key]!==false?'checked':''}/><span class="op-color-swatch" style="background:${hex}"></span><span class="op-color-name">${name}</span><span class="op-color-count">${stat.remaining}/${stat.total}</span>`;
     const checkbox = row.querySelector('input') as HTMLInputElement;
     checkbox.addEventListener('change', async () => {
       if (!ov.colorFilter) ov.colorFilter = {};
@@ -595,8 +599,11 @@ function rebuildColorFilterUI() {
       await updateOverlays();
     });
     container.appendChild(row);
+    total += stat.total;
+    remaining += stat.remaining;
   }
   container.style.display = 'flex';
+  if (progressEl) progressEl.textContent = `${remaining}/${total}`;
 }
 
 export function updateThemeToggle() {
