@@ -3,8 +3,10 @@ import { config, me, saveConfig, getActiveOverlay, applyTheme, type OverlayItem 
 import { clearOverlayCache } from '../core/cache';
 import { showToast } from '../core/toast';
 import { urlToDataURL, fileToDataURL, gmFetchJson } from '../core/gm';
-import { uniqueName, uid } from '../core/util';
-import { extractPixelCoords, updateOverlays } from '../core/overlay';
+import { uniqueName, uid, pixelToLonLat, selectPixel } from '../core/util';
+import { extractPixelCoords, updateOverlays, decodeOverlayImage } from '../core/overlay';
+import { map } from '../core/hook';
+import { TILE_SIZE } from '../core/constants';
 import { buildCCModal, openCCModal } from './ccModal';
 import { buildRSModal, openRSModal } from './rsModal';
 import { EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from '../core/events';
@@ -220,15 +222,37 @@ function rebuildOverlayListUI() {
         <input type="radio" name="op-active" ${ov.id === config.activeOverlayId ? 'checked' : ''} title="Set active"/>
         <input type="checkbox" ${ov.enabled ? 'checked' : ''} title="Toggle enabled"/>
         <div class="op-item-name" title="${(ov.name || '(unnamed)') + localTag}">${(ov.name || '(unnamed)') + localTag}</div>
+        <button class="op-button" title="Jump to location">Jump</button>
         <button class="op-icon-btn" title="Delete overlay">🗑️</button>
     `;
-    const [radio, checkbox, nameDiv, trashBtn] = item.children as any as [HTMLInputElement, HTMLInputElement, HTMLDivElement, HTMLButtonElement];
+    const [radio, checkbox, nameDiv, jumpBtn, trashBtn] = item.children as any as [HTMLInputElement, HTMLInputElement, HTMLDivElement, HTMLButtonElement, HTMLButtonElement];
     radio.addEventListener('change', async () => { config.activeOverlayId = ov.id; await saveConfig(['activeOverlayId']); updateUI(); });
     checkbox.addEventListener('change', async () => {
       ov.enabled = checkbox.checked; await saveConfig(['overlays']); clearOverlayCache(); updateUI();
       await updateOverlays();
     });
     nameDiv.addEventListener('click', async () => { config.activeOverlayId = ov.id; await saveConfig(['activeOverlayId']); updateUI(); });
+    jumpBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const m = map;
+      if (!m || !ov.pixelUrl || !ov.imageBase64) return;
+      const img = await decodeOverlayImage(ov.imageBase64);
+      if (!img) return;
+      const base = extractPixelCoords(ov.pixelUrl);
+      const x = base.chunk1 * TILE_SIZE + base.posX + ov.offsetX;
+      const y = base.chunk2 * TILE_SIZE + base.posY + ov.offsetY;
+      const camera = m.cameraForBounds([
+        pixelToLonLat(x, y),
+        pixelToLonLat(x + img.width, y + img.height)
+      ], {
+        padding: { top: 40, bottom: 12 + 133 + 40, right: 40, left: 40 }
+      });
+      camera.zoom = Math.max(camera.zoom, 11);
+      camera.bearing = null;
+      selectPixel(x, y, camera.zoom);
+      m.flyTo(camera);
+      updateUI();
+    });
     trashBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!confirm(`Delete overlay "${ov.name || '(unnamed)'}"?`)) return;

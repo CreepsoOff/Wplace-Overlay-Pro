@@ -16,6 +16,8 @@ type Map = {
   addLayer(layer: any, beforeId?: string): void;
   setPaintProperty(layerId: string, name: string, value: any): void;
   moveLayer(id: string, beforeId?: string): void;
+  cameraForBounds?(bounds: any, options?: any): any;
+  flyTo?(options: any): void;
 };
 
 let hookInstalled = false;
