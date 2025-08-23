@@ -33,7 +33,7 @@ const buildOptions = {
   entryPoints: [resolve(__dirname, 'src', 'main.ts')],
   outfile: outFile,
   bundle: true,
-  minify: true,
+  minify: false,
   legalComments: 'none',
   target: ['es2021'],
   format: 'iife',
