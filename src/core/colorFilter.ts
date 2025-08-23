@@ -3,6 +3,23 @@ import { TILE_SIZE } from './constants';
 import { extractPixelCoords } from './overlay';
 import type { OverlayItem } from './store';
 
+const overlayTileCache = new Map<string, Map<string, Uint8ClampedArray>>();
+const overlayDirtyTiles = new Map<string, Set<string>>();
+
+export function markTileDirty(overlayId: string, tileKey: string) {
+  let set = overlayDirtyTiles.get(overlayId);
+  if (!set) {
+    set = new Set();
+    overlayDirtyTiles.set(overlayId, set);
+  }
+  set.add(tileKey);
+}
+
+export function clearOverlayTileCache(overlayId: string) {
+  overlayTileCache.delete(overlayId);
+  overlayDirtyTiles.delete(overlayId);
+}
+
 export function rgbKeyToHex(key: string): string {
   const [r,g,b] = key.split(',').map(n => parseInt(n,10));
   const toHex = (n: number) => n.toString(16).padStart(2,'0');
@@ -54,8 +71,11 @@ export async function updateOverlayColorStats(ov: OverlayItem) {
 
   if (base) {
     ov.tileKeys = Array.from(neededTiles);
-    const tileCache = new Map<string, Uint8ClampedArray>();
+    const tileCache = overlayTileCache.get(ov.id) || new Map<string, Uint8ClampedArray>();
+    const dirty = overlayDirtyTiles.get(ov.id) || new Set<string>();
+
     const tilePromises = Array.from(neededTiles).map(async key => {
+      if (!dirty.has(key) && tileCache.has(key)) return;
       const [tx, ty] = key.split(',').map(n => parseInt(n, 10));
       try {
         const url = `https://backend.wplace.live/files/s0/tiles/${tx}/${ty}.png`;
@@ -67,9 +87,16 @@ export async function updateOverlayColorStats(ov: OverlayItem) {
         tileCache.set(key, tdata);
       } catch (e) {
         console.warn('Overlay Pro: failed to load tile', key, e);
+      } finally {
+        dirty.delete(key);
       }
     });
     await Promise.all(tilePromises);
+    overlayTileCache.set(ov.id, tileCache);
+    if (dirty.size > 0) overlayDirtyTiles.set(ov.id, dirty); else overlayDirtyTiles.delete(ov.id);
+    for (const key of Array.from(tileCache.keys())) {
+      if (!neededTiles.has(key)) tileCache.delete(key);
+    }
 
     // Second pass – compute remaining pixels
     for (let y = 0; y < hImg; y++) {
