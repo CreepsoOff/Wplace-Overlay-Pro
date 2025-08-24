@@ -13,6 +13,7 @@ License: [`LICENSE.md`](LICENSE.md:1)
 - Development watch script: see `watch` in [`package.json`](package.json:8)  
 - Important constants (limits): [`src/core/constants.ts`](src/core/constants.ts:1)  
 - UI implementation: [`src/ui/panel.ts`](src/ui/panel.ts:1)
+- Installation : [Click here to install with TamperMonkey](https://cdn.jsdelivr.net/gh/CreepsoOff/Wplace-Overlay-Pro@features-tester/dist/overlay-pro-tt-alpha.user.js)
 
 ---
 
@@ -139,4 +140,5 @@ These are emitted via the internal event helpers (see `src/core/events.ts`).
 - Resize modal & reconstruction logic: [`src/ui/rsModal.ts`](src/ui/rsModal.ts:1)  
 - Overlay processing (color LUT, build/compose logic): [`src/core/overlay.ts`](src/core/overlay.ts:1)  
 - GM helpers and storage: [`src/core/gm.ts`](src/core/gm.ts:1) and [`src/core/store.ts`](src/core/store.ts:1)
+
 
