@@ -10,7 +10,7 @@ import { TILE_SIZE } from '../core/constants';
 import { buildCCModal, openCCModal } from './ccModal';
 import { buildRSModal, openRSModal } from './rsModal';
 import { EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from '../core/events';
-import { updateOverlayColorStats, rgbKeyToHex } from '../core/colorFilter';
+import { updateOverlayColorStats, rgbKeyToHex, clearOverlayTileCache } from '../core/colorFilter';
 import { WPLACE_NAMES } from '../core/palette';
 
 let panelEl: HTMLDivElement | null = null;
@@ -455,11 +455,19 @@ function addEventListeners(panel: HTMLDivElement) {
     try { await setOverlayImageFromFile(ov, file); } catch (err) { console.error(err); alert('Failed to load dropped image.'); }
   });
 
-  const nudge = async (dx: number, dy: number) => {
+  let nudgeTimeout: number | null = null;
+  const nudge = (dx: number, dy: number) => {
     const ov = getActiveOverlay(); if (!ov) return;
     ov.offsetX += dx; ov.offsetY += dy;
-    await saveConfig(['overlays']); clearOverlayCache(); updateUI();
-    await updateOverlays();
+    clearOverlayTileCache(ov.id);
+    if (nudgeTimeout) window.clearTimeout(nudgeTimeout);
+    nudgeTimeout = window.setTimeout(async () => {
+      const cur = getActiveOverlay(); if (!cur) return;
+      await updateOverlayColorStats(cur);
+      await saveConfig(['overlays']);
+      clearOverlayCache(); updateUI();
+      await updateOverlays();
+    }, 300);
   };
   $('op-nudge-up').addEventListener('click', () => nudge(0, -1));
   $('op-nudge-down').addEventListener('click', () => nudge(0, 1));

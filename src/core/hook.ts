@@ -4,7 +4,7 @@ import { matchPixelUrl, extractPixelCoords, matchMeUrl, updateOverlays } from '.
 import { emit, EV_ANCHOR_SET, EV_AUTOCAP_CHANGED } from './events';
 import { updateUI } from '../ui/panel';
 import { updatePixelCoords } from '../ui/coordDisplay';
-import { updateOverlayColorStats } from './colorFilter';
+import { updateOverlayColorStats, markTileDirty, clearOverlayTileCache } from './colorFilter';
 
 // Minimal map type to avoid bundling maplibre-gl
 type Map = {
@@ -23,7 +23,6 @@ type Map = {
 let hookInstalled = false;
 let updateUICallback: null | (() => void) = null;
 const page: any = unsafeWindow;
-let tileUpdateTimeout: number | null = null;
 
 export function setUpdateUI(cb: () => void) {
   updateUICallback = cb;
@@ -110,15 +109,7 @@ export function attachHook() {
       const ty = tileMatch[2];
       const ov = getActiveOverlay();
       if (ov && ov.tileKeys && ov.tileKeys.includes(`${tx},${ty}`)) {
-        if (tileUpdateTimeout) clearTimeout(tileUpdateTimeout);
-        tileUpdateTimeout = setTimeout(async () => {
-          const cur = getActiveOverlay();
-          if (cur) {
-            await updateOverlayColorStats(cur);
-            await saveConfig(['overlays']);
-            updateUI();
-          }
-        }, 1000);
+        markTileDirty(ov.id, `${tx},${ty}`);
       }
     }
 
@@ -130,6 +121,8 @@ export function attachHook() {
         if (changed) {
           ov.pixelUrl = pixelMatch.normalized;
           ov.offsetX = 0; ov.offsetY = 0;
+          clearOverlayTileCache(ov.id);
+          await updateOverlayColorStats(ov);
           await saveConfig(['overlays']);
 
           // turn off autocapture and notify UI (via events)
