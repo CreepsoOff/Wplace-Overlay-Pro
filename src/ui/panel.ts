@@ -127,6 +127,10 @@ export function createUI() {
             </div>
           </div>
           <div id="op-color-filter-body">
+            <div class="op-row" id="op-color-filter-actions" style="justify-content:flex-end;">
+              <button class="op-button" id="op-color-enable-all" title="Enable all colors">Enable All</button>
+              <button class="op-button" id="op-color-disable-all" title="Disable all colors">Disable All</button>
+            </div>
             <div id="op-color-filter" class="op-color-filter" style="display:none;"></div>
           </div>
         </div>
@@ -420,6 +424,26 @@ function addEventListeners(panel: HTMLDivElement) {
   $('op-collapse-positioning').addEventListener('click', () => { config.collapsePositioning = !config.collapsePositioning; saveConfig(['collapsePositioning']); updateUI(); });
   $('op-collapse-color-filter').addEventListener('click', () => { config.collapseColorFilter = !config.collapseColorFilter; saveConfig(['collapseColorFilter']); updateUI(); });
 
+  $('op-color-enable-all').addEventListener('click', async () => {
+    const ov = getActiveOverlay(); if (!ov || !ov.colorStats) return;
+    if (!ov.colorFilter) ov.colorFilter = {};
+    for (const k of Object.keys(ov.colorStats)) ov.colorFilter[k] = true;
+    await saveConfig(['overlays']);
+    clearOverlayCache();
+    await updateOverlays();
+    rebuildColorFilterUI();
+  });
+
+  $('op-color-disable-all').addEventListener('click', async () => {
+    const ov = getActiveOverlay(); if (!ov || !ov.colorStats) return;
+    if (!ov.colorFilter) ov.colorFilter = {};
+    for (const k of Object.keys(ov.colorStats)) ov.colorFilter[k] = false;
+    await saveConfig(['overlays']);
+    clearOverlayCache();
+    await updateOverlays();
+    rebuildColorFilterUI();
+  });
+
   $('op-name').addEventListener('change', async (e: any) => {
     const ov = getActiveOverlay(); if (!ov) return;
     const desired = (e.target.value || '').trim() || 'Overlay';
@@ -601,13 +625,21 @@ function updateEditorUI() {
 
 function rebuildColorFilterUI() {
   const container = document.getElementById('op-color-filter') as HTMLDivElement;
+  const actions = document.getElementById('op-color-filter-actions') as HTMLDivElement;
   if (!container) return;
   const ov = getActiveOverlay();
   const progressEl = document.getElementById('op-color-progress-total');
-  if (!ov || !ov.imageBase64) { if(progressEl) progressEl.textContent=''; container.style.display = 'none'; container.innerHTML = ''; return; }
+  if (!ov || !ov.imageBase64) {
+    if(progressEl) progressEl.textContent='';
+    container.style.display = 'none';
+    container.innerHTML = '';
+    if (actions) actions.style.display = 'none';
+    return;
+  }
   if (!ov.colorStats) {
     container.textContent = 'Analyzing colors…';
     if(progressEl) progressEl.textContent = '';
+    if (actions) actions.style.display = 'none';
     updateOverlayColorStats(ov).then(async () => { await saveConfig(['overlays']); clearOverlayCache(); await updateOverlays(); rebuildColorFilterUI(); });
     return;
   }
@@ -635,6 +667,7 @@ function rebuildColorFilterUI() {
     remaining += stat.remaining;
   }
   container.style.display = 'flex';
+  if (actions) actions.style.display = 'flex';
   if (progressEl) progressEl.textContent = `${remaining}/${total}`;
 }
 
